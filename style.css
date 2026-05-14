@@ -2148,13 +2148,7 @@ a.kf-contact-item:hover .kf-contact-item__arrow {
     background: rgba(255,255,255,.22);
     color: rgba(255,255,255,.9);
   }
-  .related-card { flex: 0 0 calc(33.333% - .67rem); }
-}
-@media (max-width: 600px) {
-  .related-card { flex: 0 0 calc(33.333% - .45rem); }
-}
-@media (max-width: 380px) {
-  .related-card { flex: 0 0 calc(50% - .4rem); }
+  .related-card { flex: 0 0 calc(50% - .5rem); }
 }
 
 /* =============================================
