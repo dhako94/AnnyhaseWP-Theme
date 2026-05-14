@@ -322,9 +322,18 @@ add_action('admin_init', function (): void {
 add_action('admin_init', function (): void {
     if (get_option('annyhase_posts_cleaned')) return;
 
+    // Alle Standard-Blogbeiträge löschen
     $posts = get_posts(['post_type' => 'post', 'numberposts' => -1, 'post_status' => 'any']);
     foreach ($posts as $post) {
         wp_delete_post($post->ID, true);
+    }
+
+    // Alle Standard-Kategorien (taxonomy: category) löschen
+    $terms = get_terms(['taxonomy' => 'category', 'hide_empty' => false]);
+    if (!is_wp_error($terms)) {
+        foreach ($terms as $term) {
+            wp_delete_term($term->term_id, 'category');
+        }
     }
 
     update_option('annyhase_posts_cleaned', 1);
