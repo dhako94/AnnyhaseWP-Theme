@@ -550,7 +550,7 @@ add_action('wp_head', function (): void {
     $schemas = [];
 
     $local_biz = [
-        '@type'        => 'LocalBusiness',
+        '@type'        => 'Organization',
         '@id'          => $site_url . '#organization',
         'name'         => $site_name,
         'url'          => $site_url,
@@ -559,7 +559,6 @@ add_action('wp_head', function (): void {
         'contactPoint' => [
             '@type'             => 'ContactPoint',
             'contactType'       => 'customer service',
-            'areaServed'        => 'DE',
             'availableLanguage' => 'German',
         ],
     ];
