@@ -1,8 +1,8 @@
 /*
 Theme Name: Annyhase
 Theme URI: https://annyhase.de
-Author: Annyhase
-Author URI: https://www.etsy.com/shop/Annyhase
+Author: Dominik Hasenkopf
+Author URI: https://annyhase.de
 Description: Handgemachtes Portfolio-Theme passend zum Etsy-Shop Annyhase – Keramik & Unikate aus dem Schwabenland.
 Version: 1.0.0
 Requires at least: 6.0
@@ -1758,17 +1758,23 @@ a.kf-contact-item:hover .kf-contact-item__arrow {
 }
 .product-info__desc.is-open + .product-info__desc-fade { opacity: 0; }
 .product-info__desc-toggle {
-  background: none;
-  border: none;
-  padding: 0;
+  background: var(--color-cream);
+  border: 1.5px solid var(--color-border);
+  padding: .55rem 1.15rem;
   font-size: .83rem;
   font-weight: 600;
   color: var(--color-text);
   cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  margin-top: .3rem;
-  display: block;
+  border-radius: var(--radius-full);
+  display: inline-block;
+  margin-top: .55rem;
+  transition: background .15s, border-color .15s;
+  text-decoration: none;
+  min-height: 2.5rem;
+  line-height: 1.4;
+}
+.product-info__desc-toggle:hover {
+  background: var(--color-border);
 }
 
 /* Handgemacht + Versand */
@@ -2077,17 +2083,54 @@ a.kf-contact-item:hover .kf-contact-item__arrow {
 
 /* ── Responsive ── */
 @media (max-width: 960px) {
-  .related-layout { grid-template-columns: 1fr; gap: 1.75rem; }
-  .related-cats { position: static; }
-  .related-cats__list { flex-direction: row; flex-wrap: wrap; gap: .4rem; }
-  .related-cats__title { margin-left: 0; }
+  .related-layout { grid-template-columns: 1fr; gap: 0; }
+  .related-cats {
+    position: static;
+    padding: 1.25rem 0 1.1rem;
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: 1.5rem;
+  }
+  .related-cats__title {
+    margin: 0 0 .65rem 0;
+    font-size: .72rem;
+  }
+  .related-cats__list {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: .4rem;
+    padding-bottom: 2px;
+  }
+  .related-cats__list::-webkit-scrollbar { display: none; }
+  .related-cats__link {
+    flex-shrink: 0;
+    justify-content: flex-start;
+    gap: .35rem;
+    padding: .45rem .75rem;
+    font-size: .82rem;
+  }
+  .related-cats__count {
+    opacity: 1;
+    background: rgba(0,0,0,.08);
+    color: var(--color-text-muted);
+    padding: .1em .4em;
+    border-radius: 99px;
+    font-size: .7rem;
+    font-weight: 600;
+  }
+  .related-cats__link.is-active .related-cats__count {
+    background: rgba(255,255,255,.25);
+    color: #fff;
+  }
   .related-card { flex: 0 0 calc(33.333% - .67rem); }
 }
 @media (max-width: 600px) {
-  .related-card { flex: 0 0 calc(50% - .5rem); }
+  .related-card { flex: 0 0 calc(33.333% - .45rem); }
 }
 @media (max-width: 380px) {
-  .related-card { flex: 0 0 72%; }
+  .related-card { flex: 0 0 calc(50% - .4rem); }
 }
 
 /* =============================================
