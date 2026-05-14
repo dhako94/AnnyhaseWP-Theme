@@ -320,23 +320,32 @@ add_action('admin_init', function (): void {
    Standard-Blogbeiträge einmalig löschen
 ------------------------------------------------------- */
 add_action('admin_init', function (): void {
-    if (get_option('annyhase_posts_cleaned')) return;
-
-    // Alle Standard-Blogbeiträge löschen
-    $posts = get_posts(['post_type' => 'post', 'numberposts' => -1, 'post_status' => 'any']);
-    foreach ($posts as $post) {
-        wp_delete_post($post->ID, true);
+    // Standard-Blogbeiträge einmalig löschen
+    if (!get_option('annyhase_posts_cleaned')) {
+        $posts = get_posts(['post_type' => 'post', 'numberposts' => -1, 'post_status' => 'any']);
+        foreach ($posts as $post) {
+            wp_delete_post($post->ID, true);
+        }
+        update_option('annyhase_posts_cleaned', 1);
     }
 
-    // Alle Standard-Kategorien (taxonomy: category) löschen
-    $terms = get_terms(['taxonomy' => 'category', 'hide_empty' => false]);
-    if (!is_wp_error($terms)) {
-        foreach ($terms as $term) {
+    // Bei jedem Admin-Load: alle blog-category-Terms löschen (Uncategorized etc.)
+    $blog_cats = get_terms(['taxonomy' => 'category', 'hide_empty' => false]);
+    if (!is_wp_error($blog_cats)) {
+        foreach ($blog_cats as $term) {
             wp_delete_term($term->term_id, 'category');
         }
     }
 
-    update_option('annyhase_posts_cleaned', 1);
+    // Bei jedem Admin-Load: produktkategorie-Terms ohne zugeordnete Produkte löschen
+    $empty_cats = get_terms(['taxonomy' => 'produktkategorie', 'hide_empty' => false, 'count' => true]);
+    if (!is_wp_error($empty_cats)) {
+        foreach ($empty_cats as $term) {
+            if ($term->count === 0) {
+                wp_delete_term($term->term_id, 'produktkategorie');
+            }
+        }
+    }
 });
 
 /* -------------------------------------------------------
