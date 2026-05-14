@@ -343,7 +343,7 @@ function annyhase_enqueue(): void {
     wp_enqueue_script('annyhase-main', get_template_directory_uri() . '/assets/js/main.js', [], $ver, true);
 
     $recaptcha_site_key = get_theme_mod('annyhase_recaptcha_site_key', '');
-    if ($recaptcha_site_key) {
+    if ($recaptcha_site_key && is_page_template('page-kontakt.php')) {
         wp_enqueue_script(
             'google-recaptcha',
             'https://www.google.com/recaptcha/api.js?render=' . esc_attr($recaptcha_site_key),
