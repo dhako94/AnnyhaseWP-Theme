@@ -8,6 +8,9 @@
     <?php if (file_exists(get_template_directory() . '/assets/img/apple-touch-icon.png')): ?>
     <link rel="apple-touch-icon" sizes="180x180" href="<?php echo esc_url(get_template_directory_uri()); ?>/assets/img/apple-touch-icon.png">
     <?php endif; ?>
+    <?php if (!get_option('site_icon') && file_exists(get_template_directory() . '/assets/img/favicon.png')): ?>
+    <link rel="icon" type="image/png" href="<?php echo esc_url(get_template_directory_uri()); ?>/assets/img/favicon.png">
+    <?php endif; ?>
     <?php wp_head(); ?>
 </head>
 <body <?php body_class(); ?>>
@@ -25,13 +28,19 @@
             $hdr_name  = get_bloginfo('name');
             $hdr_p1    = mb_substr($hdr_name, 0, $hdr_split);
             $hdr_p2    = mb_substr($hdr_name, $hdr_split);
-            $hdr_logo  = has_custom_logo() && in_array($hdr_mode, ['logo_only', 'logo_text'], true);
-            $hdr_text  = $hdr_mode !== 'logo_only' || !has_custom_logo();
+            $hdr_fallback  = get_template_directory() . '/assets/img/HeaderLogo.png';
+            $hdr_has_logo  = has_custom_logo() || file_exists($hdr_fallback);
+            $hdr_logo      = $hdr_has_logo && in_array($hdr_mode, ['logo_only', 'logo_text'], true);
+            $hdr_text      = $hdr_mode !== 'logo_only' || !$hdr_has_logo;
             ?>
             <a href="<?php echo esc_url(home_url('/')); ?>" class="site-logo" aria-label="<?php echo esc_attr($hdr_name); ?>">
                 <?php if ($hdr_logo):
-                    preg_match('/<img[^>]+>/i', get_custom_logo(), $m);
-                    echo $m[0] ?? '';
+                    if (has_custom_logo()) {
+                        preg_match('/<img[^>]+>/i', get_custom_logo(), $m);
+                        echo $m[0] ?? '';
+                    } else {
+                        echo '<img src="' . esc_url(get_template_directory_uri() . '/assets/img/HeaderLogo.png') . '" alt="' . esc_attr($hdr_name) . '" style="height:44px;width:auto;object-fit:contain">';
+                    }
                 endif; ?>
                 <?php if ($hdr_text): ?>
                 <span class="site-logo__text"><?php echo esc_html($hdr_p1); ?><span><?php echo esc_html($hdr_p2); ?></span></span>

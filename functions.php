@@ -273,6 +273,50 @@ add_action('init', function () {
 });
 
 /* -------------------------------------------------------
+   Standard-Assets einmalig in Mediathek importieren
+   (Header-Logo, Footer-Logo, Favicon)
+------------------------------------------------------- */
+add_action('admin_init', function (): void {
+    if (get_option('annyhase_default_assets_imported')) return;
+
+    require_once ABSPATH . 'wp-admin/includes/file.php';
+    require_once ABSPATH . 'wp-admin/includes/image.php';
+    require_once ABSPATH . 'wp-admin/includes/media.php';
+
+    $assets = [
+        ['file' => 'HeaderLogo.png', 'mod' => 'custom_logo',         'option' => ''],
+        ['file' => 'FooterLogo.png', 'mod' => 'annyhase_footer_logo', 'option' => ''],
+        ['file' => 'favicon.png',    'mod' => '',                     'option' => 'site_icon'],
+    ];
+
+    foreach ($assets as $item) {
+        $path = get_template_directory() . '/assets/img/' . $item['file'];
+        if (!file_exists($path)) continue;
+
+        if ($item['mod']    && get_theme_mod($item['mod']))     continue;
+        if ($item['option'] && get_option($item['option']))     continue;
+
+        $upload = wp_upload_bits($item['file'], null, file_get_contents($path));
+        if (!empty($upload['error'])) continue;
+
+        $type    = wp_check_filetype($item['file']);
+        $att_id  = wp_insert_attachment([
+            'post_mime_type' => $type['type'],
+            'post_title'     => pathinfo($item['file'], PATHINFO_FILENAME),
+            'post_status'    => 'inherit',
+        ], $upload['file']);
+        if (!$att_id || is_wp_error($att_id)) continue;
+
+        wp_update_attachment_metadata($att_id, wp_generate_attachment_metadata($att_id, $upload['file']));
+
+        if ($item['mod'])    set_theme_mod($item['mod'], $att_id);
+        if ($item['option']) update_option($item['option'], $att_id);
+    }
+
+    update_option('annyhase_default_assets_imported', 1);
+});
+
+/* -------------------------------------------------------
    Enqueue Assets
 ------------------------------------------------------- */
 /**

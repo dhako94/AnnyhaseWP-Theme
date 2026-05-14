@@ -14,8 +14,10 @@ $ftr_p2      = mb_substr($ftr_title, $ftr_split);
 $ftr_tag     = get_theme_mod('annyhase_footer_brand_tagline', 'Handgemachte Keramik & Unikate aus dem Schwabenland');
 $ftr_claim   = get_theme_mod('annyhase_footer_tagline', 'Handgemacht mit Liebe');
 $ftr_emoji   = get_theme_mod('annyhase_footer_tagline_emoji', '🤍');
-$ftr_haslogo = $ftr_logo_id && in_array($ftr_mode, ['logo_only', 'logo_text'], true);
-$ftr_hastext = $ftr_mode !== 'logo_only' || !$ftr_logo_id;
+$ftr_fallback = get_template_directory() . '/assets/img/FooterLogo.png';
+$ftr_has_any  = $ftr_logo_id || file_exists($ftr_fallback);
+$ftr_haslogo  = $ftr_has_any && in_array($ftr_mode, ['logo_only', 'logo_text'], true);
+$ftr_hastext  = $ftr_mode !== 'logo_only' || !$ftr_has_any;
 ?>
 
 <!-- Etsy Banner -->
@@ -42,10 +44,14 @@ $ftr_hastext = $ftr_mode !== 'logo_only' || !$ftr_logo_id;
             <div class="footer-brand">
                 <a href="<?php echo esc_url(home_url('/')); ?>" class="site-logo">
                     <?php if ($ftr_haslogo): ?>
-                        <?php echo wp_get_attachment_image($ftr_logo_id, [240, 60], false, [
-                            'style' => 'height:44px;width:auto;object-fit:contain',
-                            'alt'   => esc_attr($ftr_title),
-                        ]); ?>
+                        <?php if ($ftr_logo_id): ?>
+                            <?php echo wp_get_attachment_image($ftr_logo_id, [240, 60], false, [
+                                'style' => 'height:44px;width:auto;object-fit:contain',
+                                'alt'   => esc_attr($ftr_title),
+                            ]); ?>
+                        <?php else: ?>
+                            <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/FooterLogo.png'); ?>" alt="<?php echo esc_attr($ftr_title); ?>" style="height:44px;width:auto;object-fit:contain">
+                        <?php endif; ?>
                     <?php endif; ?>
                     <?php if ($ftr_hastext): ?>
                     <span class="site-logo__text"><?php echo esc_html($ftr_p1); ?><span style="color:var(--color-terracotta)"><?php echo esc_html($ftr_p2); ?></span></span>
