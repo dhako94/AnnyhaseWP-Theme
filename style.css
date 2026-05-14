@@ -1346,8 +1346,8 @@ a.kf-contact-item:hover .kf-contact-item__arrow {
 }
 @media (max-width: 480px) {
   .site-footer { padding-top: 2.5rem; }
-  .footer-grid { grid-template-columns: 1fr; gap: 1.5rem; padding-bottom: 2rem; }
-  .footer-brand { grid-column: auto; }
+  .footer-grid { grid-template-columns: 1fr 1fr; gap: 1.5rem 1rem; padding-bottom: 1.75rem; }
+  .footer-brand { grid-column: span 2; }
   .footer-bottom { flex-direction: column; text-align: center; }
 }
 
@@ -1798,13 +1798,23 @@ a.kf-contact-item:hover .kf-contact-item__arrow {
 }
 @media (max-width: 560px) {
   .product-page { padding: 1rem 0 3rem; }
-  /* Keep the image close to square so the buy button stays near the top */
   .product-gallery__main { height: min(85vw, 360px); }
   .product-gallery__thumb { width: 60px; height: 60px; }
   .product-gallery__thumbs-btn { width: 32px; height: 32px; }
   .product-info__title { font-size: 1.3rem; }
   .product-info__price { font-size: 1.6rem; }
   .product-btn { padding: .9rem 1rem; font-size: .9rem; }
+  .product-breadcrumb__inner { flex-wrap: wrap; gap: .2rem .1rem; }
+  .product-breadcrumb a { white-space: normal; }
+}
+@media (max-width: 420px) {
+  .product-gallery__main { height: min(92vw, 320px); }
+  .product-gallery__thumb { width: 52px; height: 52px; }
+  .product-info__title { font-size: 1.15rem; }
+  .product-info__price { font-size: 1.4rem; }
+  .product-btn { padding: .85rem .875rem; font-size: .875rem; }
+  .product-info__desc { font-size: .84rem; }
+  .related-card { flex: 0 0 calc(50% - .5rem); }
 }
 /* Touch devices: ensure nav buttons meet the 44 px tap-target minimum */
 @media (hover: none) and (pointer: coarse) {
@@ -2351,12 +2361,17 @@ a.kf-contact-item:hover .kf-contact-item__arrow {
 
 /* Product card body: tighter padding at 2-column mobile */
 @media (max-width: 640px) {
-  .product-card__body { padding: 1rem; }
-  .product-card__footer { padding: .65rem 1rem; }
+  .product-card__body { padding: .875rem; }
+  .product-card__footer { padding: .6rem .875rem; }
 }
-@media (max-width: 400px) {
-  .product-card__title { font-size: .92rem; }
-  .product-card__price { font-size: .92rem; }
+@media (max-width: 420px) {
+  .product-card__body { padding: .65rem; }
+  .product-card__footer { padding: .5rem .65rem; }
+  .product-card__title { font-size: .86rem; line-height: 1.35; }
+  .product-card__title a { -webkit-line-clamp: 3; }
+  .product-card__price { font-size: .88rem; }
+  .product-card__category { font-size: .7rem; }
+  .product-card__link { font-size: .78rem; }
 }
 
 /* ── Footer Social Links ── */
