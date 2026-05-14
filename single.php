@@ -477,6 +477,9 @@ var annyhaseGallery = [
         var overflow = thumbsEl.scrollWidth > thumbsEl.clientWidth + 4;
         if (thumbsPrev) thumbsPrev.hidden = !overflow || thumbsEl.scrollLeft < 4;
         if (thumbsNext) thumbsNext.hidden = !overflow || thumbsEl.scrollLeft >= thumbsEl.scrollWidth - thumbsEl.clientWidth - 4;
+        // Main-nav arrows only useful when thumbnail strip itself needs scrolling
+        if (pgNavPrev) pgNavPrev.style.display = overflow ? '' : 'none';
+        if (pgNavNext) pgNavNext.style.display = overflow ? '' : 'none';
     }
     if (thumbsPrev) thumbsPrev.addEventListener('click', function() { thumbsEl.scrollBy({ left: -thumbScrollAmt(), behavior: 'smooth' }); });
     if (thumbsNext) thumbsNext.addEventListener('click', function() { thumbsEl.scrollBy({ left:  thumbScrollAmt(), behavior: 'smooth' }); });
@@ -680,6 +683,8 @@ var annyhaseGallery = [
     /* ── Hauptbild: Swipe + Prev/Next-Buttons – mit Loop ── */
     var pgNavPrev = document.getElementById('pg-nav-prev');
     var pgNavNext = document.getElementById('pg-nav-next');
+    // Initial sync: syncThumbNav() ran before these vars were defined, so run it once more
+    syncThumbNav();
 
     function getMainIdx() { return parseInt(mainEl.dataset.index) || 0; }
     function navBy(offset) {
