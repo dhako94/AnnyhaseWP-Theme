@@ -424,16 +424,12 @@ add_action('wp_head', function (): void {
 }, 5);
 
 /* -------------------------------------------------------
-   SEO: Google Search Console / Bing Webmaster Verification
+   SEO: Google Search Console Verification
 ------------------------------------------------------- */
 add_action('wp_head', function (): void {
     $google = get_theme_mod('annyhase_google_site_verification', '');
-    $bing   = get_theme_mod('annyhase_bing_site_verification',   '');
     if ($google) {
         echo '<meta name="google-site-verification" content="' . esc_attr($google) . '">' . "\n";
-    }
-    if ($bing) {
-        echo '<meta name="msvalidate.01" content="' . esc_attr($bing) . '">' . "\n";
     }
 }, 2);
 
@@ -493,10 +489,6 @@ add_action('wp_head', function (): void {
         $image   = '';
     }
 
-    if (!$image) {
-        $image = get_theme_mod('annyhase_og_fallback_image', '');
-    }
-
     $t = esc_attr(wp_strip_all_tags($title));
     $d = esc_attr(wp_trim_words(wp_strip_all_tags($desc), 30));
     $u = esc_url($url);
@@ -537,8 +529,6 @@ add_action('wp_head', function (): void {
 
     $schemas = [];
 
-    $org_image = get_theme_mod('annyhase_og_fallback_image', '');
-
     $local_biz = [
         '@type'        => 'LocalBusiness',
         '@id'          => $site_url . '#organization',
@@ -553,9 +543,6 @@ add_action('wp_head', function (): void {
             'availableLanguage' => 'German',
         ],
     ];
-    if ($org_image) {
-        $local_biz['image'] = $org_image;
-    }
     $schemas[] = $local_biz;
 
     $schemas[] = [
@@ -2206,17 +2193,13 @@ function annyhase_customizer(WP_Customize_Manager $c): void {
     // ════════════════════════════════════════════
     $c->add_section('annyhase_seo', [
         'title'       => '🔍 SEO & Webmaster-Tools',
-        'description' => 'Verifikationscodes für Google Search Console und Bing Webmaster Tools.',
+        'description' => 'Verifikationscode für Google Search Console und Google Analytics.',
         'priority'    => 42,
     ]);
 
     foreach ([
         ['annyhase_google_site_verification', 'Google Search Console – Verifikationscode',
          'Den Code aus Google Search Console → Einstellungen → Eigentumsnachweis → HTML-Tag. Nur den Wert des content-Attributs eingeben.'],
-        ['annyhase_bing_site_verification',   'Bing Webmaster Tools – Verifikationscode',
-         'Den Code aus Bing Webmaster Tools → Einstellungen → Websitekonfiguration. Nur den content-Wert eingeben.'],
-        ['annyhase_og_fallback_image',        'OG-Fallback-Bild (URL)',
-         'Wird als og:image verwendet wenn kein Beitragsbild vorhanden ist (z.B. auf der Startseite).'],
         ['annyhase_google_analytics_id',      'Google Analytics 4 – Measurement ID',
          'Format: G-XXXXXXXXXX. Nur eintragen wenn du ein aktives Cookie-Consent-Plugin (z.B. Complianz) eingebunden hast, da GA4 ohne Einwilligung gegen die DSGVO verstößt.'],
     ] as [$id, $label, $desc]) {

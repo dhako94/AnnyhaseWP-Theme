@@ -472,20 +472,20 @@ var annyhaseGallery = [
         var target = currentPos - (stripRect.width / 2) + (thRect.width / 2);
         thumbsEl.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
     }
+    // Start hidden; syncThumbNav reveals them only when the strip actually overflows
+    if (thumbsPrev) thumbsPrev.style.display = 'none';
+    if (thumbsNext) thumbsNext.style.display = 'none';
     function syncThumbNav() {
         if (!thumbsEl) return;
         var overflow = thumbsEl.scrollWidth > thumbsEl.clientWidth + 4;
-        if (thumbsPrev) thumbsPrev.hidden = !overflow || thumbsEl.scrollLeft < 4;
-        if (thumbsNext) thumbsNext.hidden = !overflow || thumbsEl.scrollLeft >= thumbsEl.scrollWidth - thumbsEl.clientWidth - 4;
-        // Main-nav arrows only useful when thumbnail strip itself needs scrolling
-        if (pgNavPrev) pgNavPrev.style.display = overflow ? '' : 'none';
-        if (pgNavNext) pgNavNext.style.display = overflow ? '' : 'none';
+        if (thumbsPrev) thumbsPrev.style.display = overflow ? '' : 'none';
+        if (thumbsNext) thumbsNext.style.display = overflow ? '' : 'none';
     }
     if (thumbsPrev) thumbsPrev.addEventListener('click', function() { thumbsEl.scrollBy({ left: -thumbScrollAmt(), behavior: 'smooth' }); });
     if (thumbsNext) thumbsNext.addEventListener('click', function() { thumbsEl.scrollBy({ left:  thumbScrollAmt(), behavior: 'smooth' }); });
     if (thumbsEl) {
         thumbsEl.addEventListener('scroll', syncThumbNav, { passive: true });
-        syncThumbNav();
+        requestAnimationFrame(syncThumbNav);
         window.addEventListener('resize', syncThumbNav, { passive: true });
     }
 
@@ -683,8 +683,6 @@ var annyhaseGallery = [
     /* ── Hauptbild: Swipe + Prev/Next-Buttons – mit Loop ── */
     var pgNavPrev = document.getElementById('pg-nav-prev');
     var pgNavNext = document.getElementById('pg-nav-next');
-    // Initial sync: syncThumbNav() ran before these vars were defined, so run it once more
-    syncThumbNav();
 
     function getMainIdx() { return parseInt(mainEl.dataset.index) || 0; }
     function navBy(offset) {
