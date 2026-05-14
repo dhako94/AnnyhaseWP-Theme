@@ -320,30 +320,34 @@ add_action('admin_init', function (): void {
    Standard-Blogbeiträge einmalig löschen
 ------------------------------------------------------- */
 add_action('admin_init', function (): void {
-    // Standard-Blogbeiträge einmalig löschen
-    if (!get_option('annyhase_posts_cleaned')) {
-        $posts = get_posts(['post_type' => 'post', 'numberposts' => -1, 'post_status' => 'any']);
-        foreach ($posts as $post) {
-            wp_delete_post($post->ID, true);
-        }
-        update_option('annyhase_posts_cleaned', 1);
+    if (get_option('annyhase_posts_cleaned')) return;
+
+    // Alle Standard-Blogbeiträge löschen
+    $posts = get_posts(['post_type' => 'post', 'numberposts' => -1, 'post_status' => 'any']);
+    foreach ($posts as $post) {
+        wp_delete_post($post->ID, true);
     }
 
-    // Bei jedem Admin-Load: alle blog-category-Terms löschen (Uncategorized etc.)
-    $blog_cats = get_terms(['taxonomy' => 'category', 'hide_empty' => false]);
-    if (!is_wp_error($blog_cats)) {
-        foreach ($blog_cats as $term) {
+    // Alle Standard-Kategorien (taxonomy: category) löschen
+    $terms = get_terms(['taxonomy' => 'category', 'hide_empty' => false]);
+    if (!is_wp_error($terms)) {
+        foreach ($terms as $term) {
             wp_delete_term($term->term_id, 'category');
         }
     }
 
-    // Bei jedem Admin-Load: produktkategorie-Terms ohne zugeordnete Produkte löschen
-    $empty_cats = get_terms(['taxonomy' => 'produktkategorie', 'hide_empty' => false, 'count' => true]);
-    if (!is_wp_error($empty_cats)) {
-        foreach ($empty_cats as $term) {
-            if ($term->count === 0) {
-                wp_delete_term($term->term_id, 'produktkategorie');
-            }
+    update_option('annyhase_posts_cleaned', 1);
+});
+
+/* -------------------------------------------------------
+   Produktkategorien synchronisieren: Terms ohne Produkte löschen
+------------------------------------------------------- */
+add_action('admin_init', function (): void {
+    $terms = get_terms(['taxonomy' => 'produktkategorie', 'hide_empty' => false]);
+    if (is_wp_error($terms)) return;
+    foreach ($terms as $term) {
+        if ($term->count === 0) {
+            wp_delete_term($term->term_id, 'produktkategorie');
         }
     }
 });
