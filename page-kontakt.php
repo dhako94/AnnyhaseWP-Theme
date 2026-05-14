@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /*
  * Template Name: Kontakt
  */
@@ -66,7 +66,7 @@ $kf_badge      = get_theme_mod('annyhase_kf_response_badge', 'Antwortet innerhal
                         </span>
                         <span class="kf-contact-item__body">
                             <span class="kf-contact-item__label"><?php esc_html_e('Etsy Shop', 'annyhase'); ?></span>
-                            <span class="kf-contact-item__value">etsy.com/shop/Annyhase</span>
+                            <span class="kf-contact-item__value"><?php echo esc_html(preg_replace('#^https?://(www\.)?#', '', rtrim($etsy_url, '/'))); ?></span>
                         </span>
                         <svg class="kf-contact-item__arrow" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                     </a>
@@ -91,10 +91,10 @@ $kf_badge      = get_theme_mod('annyhase_kf_response_badge', 'Antwortet innerhal
 
             </aside>
 
-            <!-- ── Formular-Karte ── -->
+            <!-- ── Form card ── -->
             <div class="kf-card">
 
-                <!-- Erfolgsansicht (ersetzt das Formular) -->
+                <!-- Success view (replaces the form) -->
                 <div id="kf-success" class="kf-success" hidden role="status" aria-live="polite" aria-atomic="true">
                     <div class="kf-success__circle">
                         <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
@@ -107,7 +107,7 @@ $kf_badge      = get_theme_mod('annyhase_kf_response_badge', 'Antwortet innerhal
                     </a>
                 </div>
 
-                <!-- Formular -->
+                <!-- Form -->
                 <form id="kf-form" class="kf-form" novalidate>
 
                     <!-- Honeypot (Anti-Spam) -->
@@ -117,13 +117,13 @@ $kf_badge      = get_theme_mod('annyhase_kf_response_badge', 'Antwortet innerhal
 
                     <h3 class="kf-form__title"><?php esc_html_e('Deine Nachricht', 'annyhase'); ?></h3>
 
-                    <!-- Fehler-Alert -->
+                    <!-- Error alert -->
                     <div id="kf-error" class="kf-alert kf-alert--error" hidden role="alert" aria-live="assertive" aria-atomic="true">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
                         <span id="kf-error-msg"></span>
                     </div>
 
-                    <!-- Betreff-Chips -->
+                    <!-- Subject chips -->
                     <div class="kf-field">
                         <span class="kf-label"><?php esc_html_e('Betreff', 'annyhase'); ?></span>
                         <div class="kf-chips" role="group" aria-label="<?php esc_attr_e('Betreff auswählen', 'annyhase'); ?>">
@@ -141,7 +141,7 @@ $kf_badge      = get_theme_mod('annyhase_kf_response_badge', 'Antwortet innerhal
                         </div>
                     </div>
 
-                    <!-- Name + E-Mail -->
+                    <!-- Name + email -->
                     <div class="kf-row">
                         <div class="kf-field">
                             <label class="kf-label" for="kf-name">
@@ -161,7 +161,7 @@ $kf_badge      = get_theme_mod('annyhase_kf_response_badge', 'Antwortet innerhal
                         </div>
                     </div>
 
-                    <!-- Nachricht -->
+                    <!-- Message -->
                     <div class="kf-field">
                         <label class="kf-label" for="kf-message">
                             <?php esc_html_e('Nachricht', 'annyhase'); ?> <span class="kf-req" aria-hidden="true">*</span>
@@ -171,7 +171,7 @@ $kf_badge      = get_theme_mod('annyhase_kf_response_badge', 'Antwortet innerhal
                                   required rows="6"></textarea>
                     </div>
 
-                    <!-- Datenschutz -->
+                    <!-- Privacy -->
                     <div class="kf-privacy">
                         <input type="checkbox" id="kf-privacy" name="privacy" required class="kf-privacy__check">
                         <label for="kf-privacy" class="kf-privacy__label">
@@ -183,7 +183,7 @@ $kf_badge      = get_theme_mod('annyhase_kf_response_badge', 'Antwortet innerhal
                         </label>
                     </div>
 
-                    <!-- Absenden -->
+                    <!-- Submit -->
                     <button type="submit" id="kf-submit" class="btn btn-primary kf-submit-btn">
                         <span id="kf-submit-text"><?php esc_html_e('Nachricht senden', 'annyhase'); ?></span>
                         <span id="kf-submit-loader" class="kf-loader" hidden aria-hidden="true"></span>

@@ -1,10 +1,10 @@
-<?php
+﻿<?php
 defined('ABSPATH') || exit;
 $etsy_url      = get_theme_mod('annyhase_etsy_shop_url', 'https://www.etsy.com/shop/Annyhase');
 $instagram_url = get_theme_mod('annyhase_instagram_url', 'https://www.instagram.com/annyhase_official');
 $year          = wp_date('Y');
 
-// Footer Brand
+// Footer brand
 $ftr_mode    = get_theme_mod('annyhase_footer_logo_mode', 'logo_text');
 $ftr_logo_id = absint(get_theme_mod('annyhase_footer_logo', 0));
 $ftr_title   = get_theme_mod('annyhase_footer_brand_title', 'Annyhase');

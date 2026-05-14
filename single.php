@@ -1,4 +1,4 @@
-<?php defined('ABSPATH') || exit; get_header(); ?>
+﻿<?php defined('ABSPATH') || exit; get_header(); ?>
 
 <?php while (have_posts()): the_post(); ?>
 
@@ -18,7 +18,7 @@ $video_url   = $is_produkt ? (string) get_post_meta($post_id, '_etsy_video_url',
 $video_thumb = $is_produkt ? (string) get_post_meta($post_id, '_etsy_video_thumbnail_url', true) : '';
 $has_video   = !empty($video_url);
 
-// Geordnete Liste aller Galerie-Einträge: Bild 0, dann Video, dann Bild 1..n
+// Ordered list of all gallery items: image 0, then video, then images 1..n
 $gallery_items = [];
 foreach ($gallery_ids as $i => $img_id) {
     $gallery_items[] = ['type' => 'image', 'id' => $img_id];
@@ -38,7 +38,7 @@ $has_multi = count($gallery_items) > 1;
      PRODUKT-SEITE (Etsy-Style)
      ══════════════════════════════════════════ -->
 
-<!-- Schmale Breadcrumb-Zeile -->
+<!-- Breadcrumb row -->
 <div class="product-breadcrumb">
     <div class="container">
         <nav class="product-breadcrumb__inner" aria-label="Breadcrumb">
@@ -57,10 +57,10 @@ $has_multi = count($gallery_items) > 1;
     <div class="container">
         <div class="product-layout">
 
-            <!-- ── GALERIE (links) ── -->
+            <!-- ── GALLERY (left) ── -->
             <div class="product-gallery reveal">
 
-                <!-- Hauptbild -->
+                <!-- Main image -->
                 <div class="product-gallery__main" id="pg-main" data-index="0">
                     <?php if (!empty($gallery_ids)):
                         $main_src = wp_get_attachment_image_url($gallery_ids[0], 'full') ?: wp_get_attachment_image_url($gallery_ids[0], 'product-wide');
@@ -90,7 +90,7 @@ $has_multi = count($gallery_items) > 1;
                     <?php endif; ?>
                 </div>
 
-                <!-- Thumbnails (horizontal, unter dem Hauptbild) -->
+                <!-- Thumbnails (horizontal strip below main image) -->
                 <?php if ($has_multi): ?>
                 <div class="product-gallery__thumbs-nav" id="pg-thumbs-nav">
                     <button type="button" class="product-gallery__thumbs-btn product-gallery__thumbs-btn--prev" id="pg-thumbs-prev" aria-label="Vorheriges Bild"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
@@ -127,13 +127,13 @@ $has_multi = count($gallery_items) > 1;
 
             </div><!-- /product-gallery -->
 
-            <!-- ── INFO (rechts, sticky) ── -->
+            <!-- ── INFO (right, sticky) ── -->
             <div class="product-info reveal" style="transition-delay:.12s">
 
-                <!-- Shopname -->
-                <p class="product-info__shop">Annyhase</p>
+                <!-- Shop name -->
+                <p class="product-info__shop"><?php echo esc_html(get_bloginfo('name')); ?></p>
 
-                <!-- Produkttitel -->
+                <!-- Product title -->
                 <h1 class="product-info__title"><?php the_title(); ?></h1>
 
                 <!-- Badge -->
@@ -145,14 +145,14 @@ $has_multi = count($gallery_items) > 1;
                 </div>
                 <?php endif; ?>
 
-                <!-- Preis -->
+                <!-- Price -->
                 <?php if ($price): ?>
                 <div class="product-info__price-wrap">
                     <span class="product-info__price"><?php echo esc_html($price); ?></span>
                 </div>
                 <?php endif; ?>
 
-                <!-- CTA-Buttons -->
+                <!-- CTA buttons -->
                 <div class="product-info__actions">
                     <?php if ($is_etsy && $etsy_url): ?>
                     <a href="<?php echo esc_url($etsy_url); ?>"
@@ -168,7 +168,7 @@ $has_multi = count($gallery_items) > 1;
                     </a>
                 </div>
 
-                <!-- Beschreibung (einklappbar) -->
+                <!-- Description (collapsible) -->
                 <?php
                 $content = get_the_content();
                 $desc_text = $content ? wp_kses_post(wpautop($content)) : ('<p>' . esc_html(get_the_excerpt()) . '</p>');
@@ -181,29 +181,9 @@ $has_multi = count($gallery_items) > 1;
                         <?php esc_html_e('Mehr lesen', 'annyhase'); ?>
                     </button>
                 </div>
-                <script>
-                (function(){
-                    var desc   = document.getElementById('pg-desc');
-                    var toggle = document.getElementById('pg-desc-toggle');
-                    var fade   = document.getElementById('pg-desc-fade');
-                    if (!desc || !toggle) return;
-                    if (desc.scrollHeight <= desc.offsetHeight + 4) {
-                        toggle.style.display = 'none';
-                        if (fade) fade.style.display = 'none';
-                        return;
-                    }
-                    toggle.addEventListener('click', function() {
-                        var open = desc.classList.toggle('is-open');
-                        desc.style.maxHeight = open ? desc.scrollHeight + 'px' : '';
-                        toggle.textContent = open
-                            ? '<?php echo esc_js(__('Weniger anzeigen', 'annyhase')); ?>'
-                            : '<?php echo esc_js(__('Mehr lesen', 'annyhase')); ?>';
-                    });
-                })();
-                </script>
                 <?php endif; ?>
 
-                <!-- Details: Handgemacht + Versand -->
+                <!-- Details: handmade + shipping -->
                 <?php
                 $d1_icon = get_theme_mod('annyhase_detail_row1_icon', '🤲');
                 $d1_text = get_theme_mod('annyhase_detail_row1_text', 'Handgemachtes Unikat – kleine Abweichungen in Form und Farbe sind Ausdruck echter Handarbeit.');
@@ -240,7 +220,7 @@ $has_multi = count($gallery_items) > 1;
 </div>
 
 <?php
-/* ── Ähnliche Produkte + Kategorien ── */
+/* ── Related products + categories ── */
 $current_term_ids = [];
 if (!empty($terms) && !is_wp_error($terms)) {
     $current_term_ids = wp_list_pluck($terms, 'term_id');
@@ -250,7 +230,8 @@ $related_args = [
     'post_type'      => 'produkt',
     'posts_per_page' => 8,
     'post__not_in'   => [$post_id],
-    'orderby'        => 'rand',
+    'orderby'        => 'date',
+    'order'          => 'DESC',
     'no_found_rows'  => true,
 ];
 if (!empty($current_term_ids)) {
@@ -274,11 +255,11 @@ $has_cats       = !empty($all_cats) && !is_wp_error($all_cats);
             <?php if ($has_cats): ?>
             <!-- ── Kategorien-Sidebar ── -->
             <aside class="related-cats">
-                <h3 class="related-cats__title">Kategorien</h3>
+                <h3 class="related-cats__title"><?php esc_html_e('Kategorien', 'annyhase'); ?></h3>
                 <ul class="related-cats__list">
                     <li>
                         <a href="<?php echo esc_url($products_url); ?>" class="related-cats__link">
-                            Alle Produkte
+                            <?php esc_html_e('Alle Produkte', 'annyhase'); ?>
                         </a>
                     </li>
                     <?php foreach ($all_cats as $cat): ?>
@@ -299,11 +280,11 @@ $has_cats       = !empty($all_cats) && !is_wp_error($all_cats);
             <div class="related-slider-wrap">
                 <div class="related-slider-header">
                     <h3 class="related-slider__title">
-                        Mehr aus
+                        <?php esc_html_e('Mehr aus', 'annyhase'); ?>
                         <?php if (!empty($terms) && !is_wp_error($terms)): ?>
                             <em><?php echo esc_html($terms[0]->name); ?></em>
                         <?php else: ?>
-                            dem Shop
+                            <?php esc_html_e('dem Shop', 'annyhase'); ?>
                         <?php endif; ?>
                     </h3>
                     <div class="related-slider__btns">
@@ -338,28 +319,6 @@ $has_cats       = !empty($all_cats) && !is_wp_error($all_cats);
                     <?php endwhile; wp_reset_postdata(); ?>
                 </div>
             </div>
-            <script>
-            (function() {
-                var track = document.getElementById('rs-track');
-                var prev  = document.getElementById('rs-prev');
-                var next  = document.getElementById('rs-next');
-                if (!track || !prev || !next) return;
-                function scrollAmt() {
-                    var card = track.querySelector('.related-card');
-                    if (!card) return 220;
-                    var gap = parseInt(getComputedStyle(track).gap) || 16;
-                    return card.offsetWidth + gap;
-                }
-                prev.addEventListener('click', function() { track.scrollBy({ left: -scrollAmt(), behavior: 'smooth' }); });
-                next.addEventListener('click', function() { track.scrollBy({ left:  scrollAmt(), behavior: 'smooth' }); });
-                function sync() {
-                    prev.disabled = track.scrollLeft < 4;
-                    next.disabled = track.scrollLeft >= track.scrollWidth - track.clientWidth - 4;
-                }
-                track.addEventListener('scroll', sync, { passive: true });
-                sync();
-            })();
-            </script>
             <?php endif; ?>
 
         </div>
@@ -428,281 +387,6 @@ var annyhaseGallery = [
     <div class="lightbox-counter" id="lb-counter"></div>
 </div>
 
-<script>
-(function () {
-    var allItems   = annyhaseGallery;
-    var cur        = 0;
-    var lb         = document.getElementById('lightbox');
-    var lbImg      = document.getElementById('lb-img');
-    var lbVideo    = document.getElementById('lb-video');
-    var lbVideoSrc = document.getElementById('lb-video-src');
-    var lbCtr      = document.getElementById('lb-counter');
-    var mainEl     = document.getElementById('pg-main');
-    var mainImg    = document.getElementById('pg-main-img');
-    var mainVideo  = document.getElementById('pg-main-video');
-    var videoEl    = document.getElementById('pg-video-player');
-    var thumbsEl   = document.getElementById('pg-thumbs');
-
-    if (!lb || !mainEl) return;
-
-    /* ── Thumb-Klick → Hauptbild wechseln ── */
-    if (thumbsEl) {
-        thumbsEl.querySelectorAll('.product-gallery__thumb').forEach(function(th) {
-            th.addEventListener('click', function() {
-                switchMain(parseInt(this.dataset.index) || 0);
-            });
-        });
-    }
-
-    /* ── Thumbnail-Strip: Prev/Next-Buttons ── */
-    var thumbsPrev = document.getElementById('pg-thumbs-prev');
-    var thumbsNext = document.getElementById('pg-thumbs-next');
-
-    function thumbScrollAmt() {
-        if (!thumbsEl) return 96;
-        var btn = thumbsEl.querySelector('.product-gallery__thumb');
-        if (!btn) return 96;
-        return btn.offsetWidth + (parseInt(getComputedStyle(thumbsEl).gap) || 6);
-    }
-    function centerThumb(th) {
-        if (!thumbsEl || !th) return;
-        var stripRect = thumbsEl.getBoundingClientRect();
-        var thRect    = th.getBoundingClientRect();
-        var currentPos = thumbsEl.scrollLeft + (thRect.left - stripRect.left);
-        var target = currentPos - (stripRect.width / 2) + (thRect.width / 2);
-        thumbsEl.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
-    }
-    // Start hidden; syncThumbNav reveals them only when the strip actually overflows
-    if (thumbsPrev) thumbsPrev.style.display = 'none';
-    if (thumbsNext) thumbsNext.style.display = 'none';
-    function syncThumbNav() {
-        if (!thumbsEl) return;
-        var overflow = thumbsEl.scrollWidth > thumbsEl.clientWidth + 4;
-        if (thumbsPrev) thumbsPrev.style.display = overflow ? '' : 'none';
-        if (thumbsNext) thumbsNext.style.display = overflow ? '' : 'none';
-    }
-    if (thumbsPrev) thumbsPrev.addEventListener('click', function() { thumbsEl.scrollBy({ left: -thumbScrollAmt(), behavior: 'smooth' }); });
-    if (thumbsNext) thumbsNext.addEventListener('click', function() { thumbsEl.scrollBy({ left:  thumbScrollAmt(), behavior: 'smooth' }); });
-    if (thumbsEl) {
-        thumbsEl.addEventListener('scroll', syncThumbNav, { passive: true });
-        requestAnimationFrame(syncThumbNav);
-        window.addEventListener('resize', syncThumbNav, { passive: true });
-    }
-
-    function switchMain(idx) {
-        var item = allItems[idx];
-        if (!item) return;
-        if (item.type === 'video') {
-            if (mainImg)   { mainImg.style.display = 'none'; }
-            if (mainVideo) { mainVideo.style.display = 'block'; }
-            if (videoEl)   { videoEl.play(); }
-        } else {
-            if (mainVideo) { mainVideo.style.display = 'none'; if (videoEl) videoEl.pause(); }
-            if (mainImg) {
-                mainImg.style.display = '';
-                mainImg.style.opacity = '0';
-                mainImg.style.transform = 'scale(.97)';
-                setTimeout(function() {
-                    mainImg.src = item.large;
-                    mainImg.alt = item.alt || '';
-                    mainImg.onload = function() {
-                        mainImg.style.opacity = '1';
-                        mainImg.style.transform = 'scale(1)';
-                    };
-                    setTimeout(function() {
-                        mainImg.style.opacity = '1';
-                        mainImg.style.transform = 'scale(1)';
-                    }, 350);
-                }, 160);
-            }
-        }
-        mainEl.dataset.index = idx;
-        if (thumbsEl) {
-            thumbsEl.querySelectorAll('.product-gallery__thumb').forEach(function(t) {
-                t.classList.toggle('is-active', parseInt(t.dataset.index) === idx);
-            });
-            var activeTh = thumbsEl.querySelector('.product-gallery__thumb.is-active');
-            centerThumb(activeTh);
-            syncThumbNav();
-        }
-    }
-
-    /* ── Hauptbild-Klick → Lightbox (Bild öffnet Lightbox; Video spielt inline) ── */
-    mainEl.addEventListener('click', function() {
-        var idx  = parseInt(this.dataset.index) || 0;
-        var item = allItems[idx];
-        if (!item || item.type === 'video') return;
-        openLightbox(idx);
-    });
-
-    /* ──────────────────────────────────────────
-       LIGHTBOX
-    ────────────────────────────────────────── */
-    function showLbItem(idx) {
-        var item = allItems[idx];
-        if (!item) return;
-        resetZoom();
-        if (item.type === 'video') {
-            lbImg.style.display = 'none';
-            if (lbVideo && lbVideoSrc) {
-                lbVideoSrc.src = item.url;
-                lbVideo.load();
-                lbVideo.style.display = '';
-                lbVideo.play().catch(function(){});
-            }
-        } else {
-            if (lbVideo) { lbVideo.pause(); lbVideo.style.display = 'none'; }
-            lbImg.style.display = '';
-            lbImg.src = item.full || item.large;
-            lbImg.alt = item.alt || '';
-        }
-        lbCtr.textContent = allItems.length > 1 ? (idx + 1) + ' / ' + allItems.length : '';
-    }
-
-    function openLightbox(idx) {
-        cur = idx;
-        showLbItem(cur);
-        lb.classList.add('open');
-        document.body.style.overflow = 'hidden';
-    }
-    function closeLightbox() {
-        resetZoom();
-        if (lbVideo) { lbVideo.pause(); lbVideo.style.display = 'none'; }
-        lb.classList.remove('open');
-        document.body.style.overflow = '';
-    }
-    function lbGo(n) {
-        cur = (n + allItems.length) % allItems.length;
-        showLbItem(cur);
-    }
-
-    document.getElementById('lb-close').addEventListener('click', closeLightbox);
-    document.getElementById('lb-prev').addEventListener('click', function(e){ e.stopPropagation(); lbGo(cur - 1); });
-    document.getElementById('lb-next').addEventListener('click', function(e){ e.stopPropagation(); lbGo(cur + 1); });
-    lb.addEventListener('click', function(e){ if (e.target === lb) closeLightbox(); });
-
-    document.addEventListener('keydown', function(e) {
-        if (!lb.classList.contains('open')) return;
-        if (e.key === 'Escape')     closeLightbox();
-        if (e.key === 'ArrowLeft')  lbGo(cur - 1);
-        if (e.key === 'ArrowRight') lbGo(cur + 1);
-    });
-
-    if (allItems.length <= 1) {
-        var lbp = document.getElementById('lb-prev');
-        var lbn = document.getElementById('lb-next');
-        if (lbp) lbp.style.display = 'none';
-        if (lbn) lbn.style.display = 'none';
-    }
-
-    /* ──────────────────────────────────────────
-       ZOOM (nur lbImg, nicht Video)
-    ────────────────────────────────────────── */
-    var zoomScale = 1, panX = 0, panY = 0;
-    var zoomOriginX = 50, zoomOriginY = 50;
-    var isDragging = false, wasDragging = false;
-    var dragSX = 0, dragSY = 0, panSX = 0, panSY = 0;
-
-    function applyZoom() {
-        lbImg.style.transformOrigin = zoomOriginX + '% ' + zoomOriginY + '%';
-        lbImg.style.transform = 'translate(' + panX + 'px,' + panY + 'px) scale(' + zoomScale + ')';
-        lbImg.style.cursor = zoomScale > 1 ? 'grab' : 'zoom-in';
-    }
-    function resetZoom() {
-        zoomScale = 1; panX = 0; panY = 0;
-        zoomOriginX = 50; zoomOriginY = 50;
-        lbImg.style.transform = '';
-        lbImg.style.transformOrigin = '';
-        lbImg.style.cursor = 'zoom-in';
-    }
-
-    /* Einfacher Klick: rein-/rauszoomen */
-    lbImg.addEventListener('click', function(e) {
-        e.stopPropagation();
-        if (wasDragging) { wasDragging = false; return; }
-        if (zoomScale > 1) { resetZoom(); return; }
-        var rect = lbImg.getBoundingClientRect();
-        zoomOriginX = ((e.clientX - rect.left) / rect.width)  * 100;
-        zoomOriginY = ((e.clientY - rect.top)  / rect.height) * 100;
-        zoomScale = 2.5; panX = 0; panY = 0;
-        applyZoom();
-    });
-
-    lbImg.addEventListener('wheel', function(e) {
-        e.preventDefault();
-        var rect = lbImg.getBoundingClientRect();
-        var newScale = Math.min(5, Math.max(1, zoomScale + (e.deltaY > 0 ? -0.35 : 0.35)));
-        if (newScale <= 1) { resetZoom(); return; }
-        zoomOriginX = ((e.clientX - rect.left) / rect.width)  * 100;
-        zoomOriginY = ((e.clientY - rect.top)  / rect.height) * 100;
-        zoomScale = newScale;
-        applyZoom();
-    }, { passive: false });
-
-    lbImg.addEventListener('mousedown', function(e) {
-        if (zoomScale <= 1) return;
-        e.preventDefault();
-        isDragging = true; wasDragging = false;
-        dragSX = e.clientX; dragSY = e.clientY;
-        panSX = panX; panSY = panY;
-        lbImg.style.cursor = 'grabbing';
-    });
-    document.addEventListener('mousemove', function(e) {
-        if (!isDragging) return;
-        if (Math.abs(e.clientX - dragSX) > 3 || Math.abs(e.clientY - dragSY) > 3) wasDragging = true;
-        panX = panSX + (e.clientX - dragSX);
-        panY = panSY + (e.clientY - dragSY);
-        lbImg.style.transform = 'translate(' + panX + 'px,' + panY + 'px) scale(' + zoomScale + ')';
-    });
-    document.addEventListener('mouseup', function() {
-        if (!isDragging) return;
-        isDragging = false;
-        lbImg.style.cursor = zoomScale > 1 ? 'grab' : 'zoom-in';
-    });
-
-    /* Pinch-to-zoom */
-    var pinchDist0 = 0, zoomScale0 = 1;
-    lb.addEventListener('touchstart', function(e) {
-        if (e.touches.length !== 2) return;
-        var dx = e.touches[0].clientX - e.touches[1].clientX;
-        var dy = e.touches[0].clientY - e.touches[1].clientY;
-        pinchDist0 = Math.sqrt(dx*dx + dy*dy);
-        zoomScale0 = zoomScale;
-    }, { passive: true });
-    lb.addEventListener('touchmove', function(e) {
-        if (e.touches.length !== 2) return;
-        e.preventDefault();
-        var dx = e.touches[0].clientX - e.touches[1].clientX;
-        var dy = e.touches[0].clientY - e.touches[1].clientY;
-        var newScale = Math.min(5, Math.max(1, zoomScale0 * (Math.sqrt(dx*dx + dy*dy) / pinchDist0)));
-        if (newScale < 1.05) { resetZoom(); return; }
-        zoomScale = newScale;
-        applyZoom();
-    }, { passive: false });
-
-    /* ── Hauptbild: Swipe + Prev/Next-Buttons – mit Loop ── */
-    var pgNavPrev = document.getElementById('pg-nav-prev');
-    var pgNavNext = document.getElementById('pg-nav-next');
-
-    function getMainIdx() { return parseInt(mainEl.dataset.index) || 0; }
-    function navBy(offset) {
-        var next = (getMainIdx() + offset + allItems.length) % allItems.length;
-        switchMain(next);
-    }
-
-    if (pgNavPrev) pgNavPrev.addEventListener('click', function(e) { e.stopPropagation(); navBy(-1); });
-    if (pgNavNext) pgNavNext.addEventListener('click', function(e) { e.stopPropagation(); navBy(1); });
-
-    if (allItems.length > 1) {
-        var pgSwX = 0;
-        mainEl.addEventListener('touchstart', function(e) { pgSwX = e.touches[0].clientX; }, { passive: true });
-        mainEl.addEventListener('touchend', function(e) {
-            var dx = e.changedTouches[0].clientX - pgSwX;
-            if (Math.abs(dx) > 40) navBy(dx < 0 ? 1 : -1);
-        });
-    }
-})();
-</script>
 <?php endif; ?>
 
 <?php get_footer(); ?>

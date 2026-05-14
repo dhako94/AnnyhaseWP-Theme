@@ -15,15 +15,15 @@ require_once get_template_directory() . '/inc/etsy-media.php';
 require_once get_template_directory() . '/inc/plugin-setup.php';
 
 /* -------------------------------------------------------
-   Kommentare & Beiträge vollständig deaktivieren
+   Disable comments and blog posts completely
 ------------------------------------------------------- */
 
-// Kommentare an allen Post-Types schließen
+// Close comments on all post types
 add_filter('comments_open', '__return_false', 20, 2);
 add_filter('pings_open',    '__return_false', 20, 2);
 add_filter('comments_array', '__return_empty_array', 20, 2);
 
-// Comment-Support von allen Post-Types entfernen
+// Remove comment support from all post types
 add_action('init', function (): void {
     foreach (get_post_types() as $pt) {
         if (post_type_supports($pt, 'comments')) {
@@ -33,26 +33,26 @@ add_action('init', function (): void {
     }
 });
 
-// Admin-Menü: Kommentare & Beiträge ausblenden
+// Admin menu: hide comments and posts
 add_action('admin_menu', function (): void {
     remove_menu_page('edit-comments.php');
     remove_menu_page('edit.php');
 }, 99);
 
-// Admin-Bar: Kommentare entfernen
+// Admin bar: remove comments
 add_action('wp_before_admin_bar_render', function (): void {
     global $wp_admin_bar;
     $wp_admin_bar->remove_menu('comments');
     $wp_admin_bar->remove_menu('new-post');
 });
 
-// Dashboard-Widgets entfernen
+// Remove dashboard widgets
 add_action('wp_dashboard_setup', function (): void {
     remove_meta_box('dashboard_recent_comments', 'dashboard', 'normal');
     remove_meta_box('dashboard_activity',        'dashboard', 'normal');
 });
 
-// Weiterleitungen falls jemand die URLs direkt aufruft
+// Redirect if someone accesses these URLs directly
 add_action('admin_init', function (): void {
     global $pagenow;
     if ($pagenow === 'edit-comments.php' || $pagenow === 'comment.php') {
@@ -65,7 +65,7 @@ add_action('admin_init', function (): void {
     }
 });
 
-// Kommentar-Zähler im Admin-Menü-Icon entfernen
+// Remove comment counter from admin menu icon
 add_filter('wp_count_comments', function (): object {
     return (object) ['approved' => 0, 'spam' => 0, 'trash' => 0,
                      'post-trashed' => 0, 'total_comments' => 0,
@@ -113,7 +113,7 @@ function annyhase_setup(): void {
 add_action('after_setup_theme', 'annyhase_setup');
 
 /* -------------------------------------------------------
-   Wartungsmodus
+   Maintenance mode
 ------------------------------------------------------- */
 add_action('template_redirect', function (): void {
     if (!get_theme_mod('annyhase_maintenance_mode', false)) return;
@@ -156,8 +156,8 @@ p{color:#7a5c4f;line-height:1.75;font-size:1.05rem}
 });
 
 /* -------------------------------------------------------
-   Navigation: Etsy-Link automatisch als Button stylen
-   + aktive Klasse für OnePager-Anchor-Links
+   Navigation: auto-style Etsy links as buttons
+   + active class for one-pager anchor links
 ------------------------------------------------------- */
 add_filter('nav_menu_link_attributes', function (array $atts, WP_Post $item): array {
     if (!empty($item->url) && str_contains($item->url, 'etsy.com')) {
@@ -209,7 +209,7 @@ function annyhase_create_default_menu(): void {
 
     if (is_wp_error($menu_id)) return;
 
-    /* Alte Einträge löschen wenn Menü schon existierte */
+    /* Delete existing items if menu already existed */
     if ($existing) {
         foreach ((array) wp_get_nav_menu_items($menu_id) as $old) {
             wp_delete_post($old->ID, true);
@@ -245,7 +245,7 @@ add_action('init', function () {
     $locs = get_nav_menu_locations();
     if (empty($locs['primary'])) annyhase_create_default_menu();
 
-    /* Pflichtseiten einmalig anlegen falls nicht vorhanden */
+    /* Create required pages once if they don't exist yet */
     if (!get_transient('annyhase_pages_ready')) {
         $stub_pages = [
             'kontakt'    => ['title' => 'Kontakt',    'template' => 'page-kontakt.php'],
@@ -273,8 +273,8 @@ add_action('init', function () {
 });
 
 /* -------------------------------------------------------
-   Standard-Assets einmalig in Mediathek importieren
-   (Header-Logo, Footer-Logo, Favicon)
+   Import default assets into Media Library once
+   (Header Logo, Footer Logo, Favicon)
 ------------------------------------------------------- */
 add_action('admin_init', function (): void {
     if (get_option('annyhase_default_assets_imported')) return;
@@ -317,18 +317,18 @@ add_action('admin_init', function (): void {
 });
 
 /* -------------------------------------------------------
-   Standard-Blogbeiträge einmalig löschen
+   Delete default blog posts on first activation
 ------------------------------------------------------- */
 add_action('admin_init', function (): void {
     if (get_option('annyhase_posts_cleaned')) return;
 
-    // Alle Standard-Blogbeiträge löschen
+    // Delete all default blog posts
     $posts = get_posts(['post_type' => 'post', 'numberposts' => -1, 'post_status' => 'any']);
     foreach ($posts as $post) {
         wp_delete_post($post->ID, true);
     }
 
-    // Alle Standard-Kategorien (taxonomy: category) löschen
+    // Delete all default categories (taxonomy: category)
     $terms = get_terms(['taxonomy' => 'category', 'hide_empty' => false]);
     if (!is_wp_error($terms)) {
         foreach ($terms as $term) {
@@ -340,7 +340,7 @@ add_action('admin_init', function (): void {
 });
 
 /* -------------------------------------------------------
-   Produktkategorien synchronisieren: Terms ohne Produkte löschen
+   Sync product categories: delete terms with no products
 ------------------------------------------------------- */
 add_action('admin_init', function (): void {
     $terms = get_terms(['taxonomy' => 'produktkategorie', 'hide_empty' => false]);
@@ -394,6 +394,12 @@ function annyhase_enqueue(): void {
         'nonce'            => wp_create_nonce('annyhase_nonce'),
         'themeUrl'         => get_template_directory_uri(),
         'recaptchaSiteKey' => $recaptcha_site_key,
+        'i18n'             => [
+            'readMore'    => __('Mehr lesen', 'annyhase'),
+            'readLess'    => __('Weniger anzeigen', 'annyhase'),
+            'readMoreBtn' => __('Weiterlesen', 'annyhase'),
+            'readLessBtn' => __('Weniger anzeigen', 'annyhase'),
+        ],
     ]);
 }
 add_action('wp_enqueue_scripts', 'annyhase_enqueue');
@@ -447,9 +453,8 @@ add_action('wp_head', function (): void {
 }, 2);
 
 /* -------------------------------------------------------
-   Google Analytics 4 (GA4) – nur laden wenn Measurement ID
-   gesetzt und Cookie-Consent erteilt wurde.
-   Hinweis: Benötigt ein aktives Consent-Plugin (z.B. Complianz).
+   Google Analytics 4 (GA4) – only load when Measurement ID is set.
+   Note: requires a cookie consent plugin (e.g. Complianz) for GDPR compliance.
 ------------------------------------------------------- */
 add_action('wp_head', function (): void {
     $ga_id = get_theme_mod('annyhase_google_analytics_id', '');
@@ -462,7 +467,7 @@ add_action('wp_head', function (): void {
 window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
-gtag('config', '{$ga_id}', { anonymize_ip: true });
+gtag('config', '{$ga_id}');
 </script>
 HTML;
 }, 20);
@@ -476,30 +481,35 @@ add_action('wp_head', function (): void {
     $site_name = get_bloginfo('name');
     $site_desc = get_bloginfo('description');
 
+    /* Fallback: Customizer image → local default in assets/img */
+    $fallback_og = esc_url(
+        get_theme_mod('annyhase_og_default_image', get_template_directory_uri() . '/assets/img/og-default.png')
+    );
+
     if (is_singular('produkt') && $post) {
         $title   = get_the_title($post->ID);
         $desc    = wp_strip_all_tags(get_the_excerpt($post->ID) ?: wp_trim_words(get_the_content(null, false, $post->ID), 25));
         $url     = get_permalink($post->ID);
         $og_type = 'product';
-        $image   = get_the_post_thumbnail_url($post->ID, 'product-wide') ?: '';
+        $image   = get_the_post_thumbnail_url($post->ID, 'product-wide') ?: $fallback_og;
     } elseif (is_front_page()) {
         $title   = $site_name;
         $desc    = $site_desc ?: get_theme_mod('annyhase_hero_tagline', 'Handgemachte Keramik & Unikate aus dem Schwabenland');
         $url     = home_url('/');
         $og_type = 'website';
-        $image   = '';
+        $image   = $fallback_og;
     } elseif (is_page()) {
         $title   = get_the_title();
         $desc    = wp_strip_all_tags(get_the_excerpt() ?: wp_trim_words(get_the_content(), 25));
         $url     = get_permalink();
         $og_type = 'website';
-        $image   = get_the_post_thumbnail_url(null, 'product-wide') ?: '';
+        $image   = get_the_post_thumbnail_url(null, 'product-wide') ?: $fallback_og;
     } else {
         $title   = wp_get_document_title();
         $desc    = $site_desc;
         $url     = home_url(add_query_arg([]));
         $og_type = 'website';
-        $image   = '';
+        $image   = $fallback_og;
     }
 
     $t = esc_attr(wp_strip_all_tags($title));
@@ -515,10 +525,7 @@ add_action('wp_head', function (): void {
     echo '<meta property="og:description"  content="' . $d . '">' . "\n";
     echo '<meta property="og:url"          content="' . $u . '">' . "\n";
     if ($i) {
-        echo '<meta property="og:image"        content="' . $i . '">' . "\n";
-        echo '<meta property="og:image:width"  content="900">' . "\n";
-        echo '<meta property="og:image:height" content="600">' . "\n";
-        echo '<meta property="og:image:type"   content="image/jpeg">' . "\n";
+        echo '<meta property="og:image" content="' . $i . '">' . "\n";
     }
     echo '<meta name="twitter:card"        content="summary_large_image">' . "\n";
     echo '<meta name="twitter:title"       content="' . $t . '">' . "\n";
@@ -644,7 +651,7 @@ add_action('wp_head', function (): void {
 }, 10);
 
 /* -------------------------------------------------------
-   SEO: rel="prev" / rel="next" für Archive-Seiten
+   SEO: rel="prev" / rel="next" for archive pages
 ------------------------------------------------------- */
 add_action('wp_head', function (): void {
     if (!is_archive() && !is_home()) return;
@@ -661,26 +668,6 @@ add_action('wp_head', function (): void {
     }
 }, 5);
 
-/* -------------------------------------------------------
-   Widgets
-------------------------------------------------------- */
-/**
- * Registers the optional sidebar widget area.
- *
- * Hooked to `widgets_init`. The sidebar is available for use in custom templates
- * but is not rendered in any of the default theme templates.
- */
-function annyhase_widgets(): void {
-    register_sidebar([
-        'name'          => __('Sidebar', 'annyhase'),
-        'id'            => 'sidebar-1',
-        'before_widget' => '<div class="widget">',
-        'after_widget'  => '</div>',
-        'before_title'  => '<h3 class="widget-title">',
-        'after_title'   => '</h3>',
-    ]);
-}
-add_action('widgets_init', 'annyhase_widgets');
 
 /* -------------------------------------------------------
    Custom Post Types
@@ -732,7 +719,7 @@ function annyhase_register_cpts(): void {
         'show_ui'       => true,
         'show_in_menu'  => true,
         'supports'      => ['title', 'editor'],
-        'show_in_rest'  => true,
+        'show_in_rest'  => false,
         'menu_icon'     => 'dashicons-star-filled',
         'menu_position' => 6,
     ]);
@@ -740,10 +727,10 @@ function annyhase_register_cpts(): void {
 add_action('init', 'annyhase_register_cpts');
 
 /* -------------------------------------------------------
-   Admin-Listenansicht: Spalten für den Produkt-CPT
+   Admin list view: columns for the product CPT
 ------------------------------------------------------- */
 
-/* Spalten definieren */
+/* Define columns */
 add_filter('manage_produkt_posts_columns', function (array $cols): array {
     $new = [];
     // Vorschaubild ganz links (nach Checkbox)
@@ -760,7 +747,7 @@ add_filter('manage_produkt_posts_columns', function (array $cols): array {
     return $new;
 });
 
-/* Spalteninhalte ausgeben */
+/* Render column content */
 add_action('manage_produkt_posts_custom_column', function (string $col, int $post_id): void {
     switch ($col) {
 
@@ -844,7 +831,7 @@ add_action('manage_produkt_posts_custom_column', function (string $col, int $pos
     }
 }, 10, 2);
 
-/* Vorschaubild-Spalte schmal halten */
+/* Keep thumbnail column narrow */
 add_action('admin_head', function (): void {
     $screen = function_exists('get_current_screen') ? get_current_screen() : null;
     if (!$screen || $screen->id !== 'edit-produkt') return;
@@ -859,7 +846,7 @@ add_action('admin_head', function (): void {
     </style>';
 });
 
-/* Highlight-Toggle per Klick auf den Stern in der Spalte */
+/* Highlight toggle via star click in the list column */
 add_action('admin_init', function (): void {
     $action = sanitize_key($_GET['produkt_action'] ?? '');
     if ($action !== 'toggle_highlight' || empty($_GET['produkt_id'])) return;
@@ -898,7 +885,7 @@ function annyhase_highlight_order_clauses(array $clauses): array {
 }
 
 /* -------------------------------------------------------
-   Admin-Listenansicht: Spalten für den Bewertungs-CPT
+   Admin list view: columns for the review CPT
 ------------------------------------------------------- */
 
 add_filter('manage_bewertung_posts_columns', function (array $cols): array {
@@ -971,21 +958,21 @@ add_action('admin_init', function (): void {
     exit;
 });
 
-/* Sortierbare Spalten: Produkte */
+/* Sortable columns: products */
 add_filter('manage_edit-produkt_sortable_columns', function (array $cols): array {
     $cols['produkt_preis']     = 'produkt_preis';
     $cols['produkt_highlight'] = 'produkt_highlight';
     return $cols;
 });
 
-/* Sortierbare Spalten: Bewertungen */
+/* Sortable columns: reviews */
 add_filter('manage_edit-bewertung_sortable_columns', function (array $cols): array {
     $cols['bewertung_highlight'] = 'bewertung_highlight';
     $cols['bewertung_sterne']    = 'bewertung_sterne';
     return $cols;
 });
 
-/* Sortierung: Preis + Sterne via meta_key (INNER JOIN ok – Wert immer vorhanden) */
+/* Sort by price + stars via meta_key (INNER JOIN is fine – value always present) */
 add_action('pre_get_posts', function (WP_Query $q): void {
     if (!is_admin() || !$q->is_main_query()) return;
     global $pagenow;
@@ -1005,9 +992,9 @@ add_action('pre_get_posts', function (WP_Query $q): void {
 });
 
 /*
- * Highlight-Sortierung via LEFT JOIN + COALESCE:
- * Einträge ohne das Meta-Feld werden als '0' behandelt und erscheinen hinten.
- * Ein normaler meta_key-Ansatz würde diese Einträge per INNER JOIN ausblenden.
+ * Highlight sort via LEFT JOIN + COALESCE:
+ * Posts without the meta field are treated as '0' and appear last.
+ * A plain meta_key approach would hide those posts via INNER JOIN.
  */
 add_filter('posts_clauses', function (array $clauses, WP_Query $q): array {
     if (!is_admin() || !$q->is_main_query()) return $clauses;
@@ -1034,7 +1021,7 @@ add_filter('posts_clauses', function (array $clauses, WP_Query $q): array {
     return $clauses;
 }, 10, 2);
 
-/* Produkte pro Seite im Archiv und in Taxonomie-Seiten */
+/* Products per page in archive and taxonomy views */
 add_action('pre_get_posts', function (WP_Query $q): void {
     if (is_admin() || !$q->is_main_query()) return;
     if (!$q->is_post_type_archive('produkt') && !$q->is_tax('produktkategorie')) return;
@@ -1054,7 +1041,7 @@ add_action('pre_get_posts', function (WP_Query $q): void {
 }, 5);
 
 /* -------------------------------------------------------
-   Meta Boxes: Produkt Details
+   Meta boxes: product details
 ------------------------------------------------------- */
 function annyhase_meta_boxes(): void {
     add_meta_box('produkt_details',  __('Produkt Details', 'annyhase'),  'annyhase_produkt_details_cb',  'produkt',  'normal', 'high');
@@ -1064,7 +1051,7 @@ function annyhase_meta_boxes(): void {
 add_action('add_meta_boxes', 'annyhase_meta_boxes');
 
 /* -------------------------------------------------------
-   Galerie Meta Box
+   Gallery meta box
 ------------------------------------------------------- */
 function annyhase_galerie_cb(WP_Post $post): void {
     wp_nonce_field('annyhase_galerie_meta', 'annyhase_galerie_nonce');
@@ -1198,7 +1185,13 @@ function annyhase_galerie_cb(WP_Post $post): void {
             if(dragged && dragged!==this){$(this).before($(dragged));}
         });
         $preview.find('.gal-thumb').attr('draggable','true');
-        $preview.on('DOMNodeInserted','.gal-thumb',function(){$(this).attr('draggable','true');});
+        new MutationObserver(function(mutations){
+            mutations.forEach(function(m){
+                m.addedNodes.forEach(function(n){
+                    if(n.classList && n.classList.contains('gal-thumb')) $(n).attr('draggable','true');
+                });
+            });
+        }).observe($preview[0], {childList: true});
     });
     </script>
     <?php
@@ -1220,7 +1213,7 @@ function annyhase_save_galerie_meta(int $post_id): void {
 add_action('save_post_produkt', 'annyhase_save_galerie_meta');
 
 /* -------------------------------------------------------
-   Galerie-Helper: alle Bild-IDs für ein Produkt
+   Gallery helper: all image IDs for a product
 ------------------------------------------------------- */
 /**
  * Returns an ordered array of attachment IDs for a product's image gallery.
@@ -1237,17 +1230,17 @@ function annyhase_get_gallery_ids(int $post_id = 0): array {
     $id  = $post_id ?: get_the_ID();
     $ids = [];
 
-    // 1. Featured Image immer zuerst
+    // 1. Featured image always first
     $thumb = get_post_thumbnail_id($id);
     if ($thumb) $ids[] = (int)$thumb;
 
-    // 2. Explizit gespeicherte Galerie-IDs
+    // 2. Explicitly saved gallery IDs
     $meta = get_post_meta($id, '_produkt_galerie', true);
     foreach (array_filter(array_map('intval', explode(',', $meta ?: ''))) as $gid) {
         if (!in_array($gid, $ids)) $ids[] = $gid;
     }
 
-    // 3. Fallback: automatisch angehängte Bilder (vom Import) – nur wenn gar kein Bild vorhanden
+    // 3. Fallback: auto-attached images (from import) – only when no images at all
     if (count($ids) === 0) {
         $attached = get_children([
             'post_parent'    => $id,
@@ -1375,6 +1368,10 @@ function annyhase_save_bewertung_meta(int $post_id): void {
     update_post_meta($post_id, '_bewertung_highlight', isset($_POST['bewertung_highlight']) ? '1' : '0');
 }
 add_action('save_post_bewertung', 'annyhase_save_bewertung_meta');
+add_action('save_post_bewertung',  function (): void { delete_transient('annyhase_reviews_data'); });
+add_action('before_delete_post',   function (int $id): void {
+    if (get_post_type($id) === 'bewertung') delete_transient('annyhase_reviews_data');
+});
 
 /* -------------------------------------------------------
    E-Mail HTML-Template Helpers
@@ -1489,7 +1486,7 @@ function annyhase_email_autoreply(string $name, string $email, string $subject, 
     );
 }
 
-/* Benachrichtigungsmail an die Shopbetreiberin */
+/* Notification email to the shop owner */
 function annyhase_email_notification(string $name, string $email, string $subject, string $message): string {
     $s_row = $subject ? '
       <tr>
@@ -1559,7 +1556,10 @@ function annyhase_contact_submit(): void {
     check_ajax_referer('annyhase_nonce', 'nonce');
 
     // Rate limiting: max 5 submissions per IP per hour
-    $ip_key = 'annyhase_cf_' . md5($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+    // Use CF-Connecting-IP (real visitor IP behind Cloudflare) when available.
+    $raw_ip = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $ip     = filter_var(sanitize_text_field($raw_ip), FILTER_VALIDATE_IP) ? $raw_ip : 'unknown';
+    $ip_key = 'annyhase_cf_' . md5($ip);
     $count  = (int) get_transient($ip_key);
     if ($count >= 5) {
         wp_send_json_error(['message' => __('Zu viele Anfragen. Bitte warte eine Stunde und versuche es erneut.', 'annyhase')]);
@@ -1567,7 +1567,7 @@ function annyhase_contact_submit(): void {
     }
     set_transient($ip_key, $count + 1, HOUR_IN_SECONDS);
 
-    // reCAPTCHA v3 – nur prüfen wenn Secret Key konfiguriert
+    // reCAPTCHA v3 – only verify when secret key is configured
     $recaptcha_secret = get_theme_mod('annyhase_recaptcha_secret_key', '');
     if ($recaptcha_secret) {
         $recaptcha_token = sanitize_text_field(wp_unslash($_POST['recaptcha_token'] ?? ''));
@@ -1616,7 +1616,7 @@ function annyhase_contact_submit(): void {
         $tpl
     );
 
-    // ── Benachrichtigung an Shopbetreiberin ──
+    // ── Notification to shop owner ──
     $to             = get_theme_mod('annyhase_contact_email', get_option('admin_email'));
     $notify_subject = $fill(get_theme_mod('annyhase_contact_notify_subject', 'Neue Kontaktanfrage: {subject}'));
     // Strip any newlines from name to prevent email header injection.
@@ -1633,7 +1633,7 @@ function annyhase_contact_submit(): void {
         return;
     }
 
-    // ── Automatische Bestätigungsmail an Absender ──
+    // ── Auto-reply confirmation email to sender ──
     $autoreply_on = (bool) get_theme_mod('annyhase_contact_autoreply', true);
     if ($autoreply_on) {
         $from_name     = get_theme_mod('annyhase_contact_autoreply_from', get_bloginfo('name'));
@@ -1648,7 +1648,7 @@ function annyhase_contact_submit(): void {
         }
     }
 
-    // ── Erfolgsmeldung ──
+    // ── Success response ──
     $success = get_theme_mod(
         'annyhase_contact_success_msg',
         'Vielen Dank für deine Nachricht! Ich melde mich so schnell wie möglich bei dir.'
@@ -1662,16 +1662,6 @@ add_action('wp_ajax_nopriv_annyhase_contact', 'annyhase_contact_submit');
    Template Tag Helpers
 ------------------------------------------------------- */
 
-/**
- * Returns the Etsy logo as an inline SVG string (SimpleIcons design).
- *
- * All attributes are attribute-escaped internally, so the return value is
- * safe to echo directly in a template.
- *
- * @param  int    $size  Width and height in pixels. Default 18.
- * @param  string $color CSS color value for the fill. Default 'currentColor'.
- * @return string        Inline `<svg>` element.
- */
 /**
  * Encodes an email address as HTML character entities to deter naive scrapers.
  * The mailto: href should still use the plain address; use this only for display.
@@ -1780,7 +1770,7 @@ add_filter('excerpt_more',   fn() => '…');
 
 /* -------------------------------------------------------
    Theme Customizer
-   Sections visible under: Design → Anpassen
+   Sections visible under: Appearance → Customize
 ------------------------------------------------------- */
 /**
  * Registers all Customizer sections, settings, and controls for the theme.
@@ -2205,10 +2195,32 @@ function annyhase_customizer(WP_Customize_Manager $c): void {
     // SEKTION: SEO & Webmaster-Tools
     // ════════════════════════════════════════════
     $c->add_section('annyhase_seo', [
-        'title'       => '🔍 SEO & Webmaster-Tools',
-        'description' => 'Verifikationscode für Google Search Console und Google Analytics.',
+        'title'       => '🔍 SEO & Social Sharing',
+        'description' => 'Verifikationscode für Google Search Console, Google Analytics und das Standard-Vorschaubild für soziale Netzwerke.',
         'priority'    => 42,
     ]);
+
+    // ── OG Default Image ──
+    $c->add_setting('annyhase_og_default_image', [
+        'default'           => get_template_directory_uri() . '/assets/img/og-default.png',
+        'sanitize_callback' => 'esc_url_raw',
+        'transport'         => 'refresh',
+    ]);
+    $c->add_control(new WP_Customize_Image_Control($c, 'annyhase_og_default_image', [
+        'label'       => '🖼️ Standard-Vorschaubild (OG Image)',
+        'description' => implode(' ', [
+            '<strong>Was ist ein OG Image?</strong><br>',
+            'Wenn jemand deine Website bei Facebook, Instagram, WhatsApp, Pinterest oder in einer Messenger-Nachricht verlinkt,',
+            'wird automatisch ein Vorschaubild angezeigt – das ist das OG Image (Open Graph Image).',
+            'Ohne dieses Bild zeigen viele Plattformen gar kein Bild an oder wählen irgendein zufälliges Bild von der Seite.<br><br>',
+            '<strong>Empfehlung:</strong> Lade ein Bild mit <strong>1200 × 630 Pixel</strong> hoch (JPG oder PNG).',
+            'Das Bild sollte deinen Shop oder deine Keramik zeigen – am besten mit deinem Logo.',
+            'Derzeit ist ein Platzhalter (dein Header-Logo) hinterlegt – ersetze ihn durch ein richtiges Vorschaubild.<br><br>',
+            '<strong>Verwendung:</strong> Dieses Bild erscheint überall dort, wo kein eigenes Produktbild vorhanden ist',
+            '– also auf der Startseite, der Kontaktseite und allen Unterseiten ohne Beitragsvorschaubild.',
+        ]),
+        'section'     => 'annyhase_seo',
+    ]));
 
     foreach ([
         ['annyhase_google_site_verification', 'Google Search Console – Verifikationscode',

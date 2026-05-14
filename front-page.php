@@ -1,4 +1,4 @@
-<?php defined('ABSPATH') || exit; get_header(); ?>
+﻿<?php defined('ABSPATH') || exit; get_header(); ?>
 
 <!-- ============================================================
      HERO SECTION
@@ -22,7 +22,7 @@
     </div>
 
     <?php $etsy = etsy_sync_get_stats(); ?>
-    <!-- Stats-Leiste -->
+    <!-- Stats bar -->
     <div class="hero__stats-bar">
         <div class="container">
             <div class="hero__stats-grid">
@@ -133,7 +133,7 @@
 </section>
 
 <!-- ============================================================
-     GALERIE SECTION
+     GALLERY SECTION
      ============================================================ -->
 <section class="section" id="galerie">
     <div class="container">
@@ -218,72 +218,9 @@
     </div>
 </section>
 
-<?php if ($has_gallery): ?>
-<script>
-(function () {
-    const items   = Array.from(document.querySelectorAll('.gallery-item[data-lb-src]'));
-    const lb      = document.getElementById('gallery-lb');
-    if (!items.length || !lb) return;
-
-    const lbImg     = document.getElementById('lb-img');
-    const lbCaption = document.getElementById('lb-caption');
-    const lbClose   = document.getElementById('lb-close');
-    const lbPrev    = document.getElementById('lb-prev');
-    const lbNext    = document.getElementById('lb-next');
-    let current     = 0;
-
-    function show(index) {
-        current = (index + items.length) % items.length;
-        const item = items[current];
-        lbImg.src         = item.dataset.lbSrc;
-        lbImg.alt         = item.dataset.lbCaption || '';
-        lbCaption.textContent = item.dataset.lbCaption || '';
-        lbPrev.style.display = items.length > 1 ? '' : 'none';
-        lbNext.style.display = items.length > 1 ? '' : 'none';
-    }
-
-    function open(index) {
-        show(index);
-        lb.classList.add('is-open');
-        document.body.style.overflow = 'hidden';
-        lbClose.focus();
-    }
-
-    function close() {
-        lb.classList.remove('is-open');
-        document.body.style.overflow = '';
-    }
-
-    items.forEach((item, i) => {
-        item.addEventListener('click', () => open(i));
-        item.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(i); } });
-    });
-
-    lbClose.addEventListener('click', close);
-    lbPrev.addEventListener('click', () => show(current - 1));
-    lbNext.addEventListener('click', () => show(current + 1));
-
-    lb.addEventListener('click', e => { if (e.target === lb) close(); });
-
-    document.addEventListener('keydown', e => {
-        if (!lb.classList.contains('is-open')) return;
-        if (e.key === 'Escape')     close();
-        if (e.key === 'ArrowLeft')  show(current - 1);
-        if (e.key === 'ArrowRight') show(current + 1);
-    });
-
-    let startX = 0;
-    lb.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
-    lb.addEventListener('touchend', e => {
-        const dx = e.changedTouches[0].clientX - startX;
-        if (Math.abs(dx) > 40) show(dx < 0 ? current + 1 : current - 1);
-    });
-})();
-</script>
-<?php endif; ?>
 
 <!-- ============================================================
-     ÜBER MICH SECTION
+     ABOUT SECTION
      ============================================================ -->
 <section class="section section--cream" id="ueber-mich">
     <div class="container">
@@ -345,7 +282,7 @@
 </section>
 
 <!-- ============================================================
-     BEWERTUNGEN / TESTIMONIALS
+     REVIEWS / TESTIMONIALS
      ============================================================ -->
 <div id="bewertungen">
 <?php get_template_part('inc/testimonials'); ?>

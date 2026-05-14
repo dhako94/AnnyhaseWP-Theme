@@ -1,35 +1,43 @@
 <?php
 defined('ABSPATH') || exit;
 /**
- * Template-Part: Kundenstimmen / Testimonials-Slider
- * Einbinden via: get_template_part('inc/testimonials');
+ * Template part: customer reviews / testimonial slider
+ * Include via: get_template_part('inc/testimonials');
  */
 
-$reviews_query = new WP_Query([
-    'post_type'      => 'bewertung',
-    'posts_per_page' => 50,
-    'post_status'    => 'publish',
-    'orderby'        => 'date',
-    'order'          => 'DESC',
-]);
+/* Unique cache key; invalidated by save_post_bewertung / before_delete_post hooks in functions.php */
+$cards = get_transient('annyhase_reviews_data');
 
-$cards = [];
-if ($reviews_query->have_posts()):
-    while ($reviews_query->have_posts()): $reviews_query->the_post();
-        $stars     = intval(get_post_meta(get_the_ID(), '_bewertung_sterne',    true) ?: 5);
-        $text      = wp_kses_post(get_the_content() ?: get_the_excerpt());
-        $highlight = (bool) get_post_meta(get_the_ID(), '_bewertung_highlight', true);
-        $cards[]   = compact('stars', 'text', 'highlight');
-    endwhile; wp_reset_postdata();
-else:
-    foreach ([
-        ['stars' => 5, 'text' => 'Absolut wunderschöne Keramik! Die Qualität ist hervorragend und das Paket kam liebevoll verpackt an.',            'highlight' => false],
-        ['stars' => 5, 'text' => 'Jedes Stück ist ein kleines Kunstwerk. Ich bin begeistert von der Verarbeitung und dem einzigartigen Charakter.', 'highlight' => false],
-        ['stars' => 5, 'text' => 'Super schnelle Lieferung, tolle Qualität und ein sehr persönlicher Service. Wärmstens empfohlen!',                'highlight' => false],
-    ] as $r): $cards[] = $r; endforeach;
-endif;
+if (false === $cards) {
+    $cards = [];
 
-usort($cards, static fn($a, $b) => (int)($b['highlight'] ?? 0) - (int)($a['highlight'] ?? 0));
+    $reviews_query = new WP_Query([
+        'post_type'      => 'bewertung',
+        'posts_per_page' => 50,
+        'post_status'    => 'publish',
+        'orderby'        => 'date',
+        'order'          => 'DESC',
+    ]);
+
+    if ($reviews_query->have_posts()):
+        while ($reviews_query->have_posts()): $reviews_query->the_post();
+            $stars     = intval(get_post_meta(get_the_ID(), '_bewertung_sterne',    true) ?: 5);
+            $text      = wp_kses_post(get_the_content() ?: get_the_excerpt());
+            $highlight = (bool) get_post_meta(get_the_ID(), '_bewertung_highlight', true);
+            $cards[]   = compact('stars', 'text', 'highlight');
+        endwhile; wp_reset_postdata();
+    else:
+        $cards = [
+            ['stars' => 5, 'text' => 'Absolut wunderschöne Keramik! Die Qualität ist hervorragend und das Paket kam liebevoll verpackt an.',            'highlight' => false],
+            ['stars' => 5, 'text' => 'Jedes Stück ist ein kleines Kunstwerk. Ich bin begeistert von der Verarbeitung und dem einzigartigen Charakter.', 'highlight' => false],
+            ['stars' => 5, 'text' => 'Super schnelle Lieferung, tolle Qualität und ein sehr persönlicher Service. Wärmstens empfohlen!',                'highlight' => false],
+        ];
+    endif;
+
+    usort($cards, static fn($a, $b) => (int)($b['highlight'] ?? 0) - (int)($a['highlight'] ?? 0));
+
+    set_transient('annyhase_reviews_data', $cards, 5 * MINUTE_IN_SECONDS);
+}
 
 $reviews_total     = max(1, min(12, absint(get_theme_mod('annyhase_reviews_total',     6))));
 $reviews_per_slide = max(1, min(5,  absint(get_theme_mod('annyhase_reviews_per_slide', 3))));
@@ -38,9 +46,6 @@ $cards             = array_slice($cards, 0, $reviews_total);
 $card_count        = count($cards);
 
 if (!$card_count) return;
-
-/* Einmalige ID damit mehrere Instanzen pro Seite möglich wären */
-$uid = 'ts-' . substr(md5(uniqid('', true)), 0, 6);
 ?>
 
 <section class="section section--alt">
@@ -50,8 +55,12 @@ $uid = 'ts-' . substr(md5(uniqid('', true)), 0, 6);
             <h2 class="section-title"><?php echo esc_html(get_theme_mod('annyhase_reviews_title', 'Was meine Kunden sagen')); ?></h2>
         </div>
 
-        <div class="testimonial-slider reveal" style="transition-delay:.1s">
-            <div class="testimonial-track" id="<?php echo esc_attr($uid); ?>-track">
+        <div class="testimonial-slider reveal"
+             data-per-slide="<?php echo (int) $reviews_per_slide; ?>"
+             data-speed="<?php echo (int) $reviews_speed; ?>"
+             style="transition-delay:.1s">
+
+            <div class="testimonial-track">
                 <?php foreach ($cards as $card): ?>
                 <div class="ts-slide">
                     <div class="testimonial-card">
@@ -63,102 +72,13 @@ $uid = 'ts-' . substr(md5(uniqid('', true)), 0, 6);
             </div>
 
             <?php if ($card_count > 1): ?>
-            <div class="testimonial-controls" id="<?php echo esc_attr($uid); ?>-controls">
-                <button class="testimonial-btn" id="<?php echo esc_attr($uid); ?>-prev" aria-label="Vorherige Bewertung">&#8249;</button>
-                <div class="testimonial-dots" id="<?php echo esc_attr($uid); ?>-dots"></div>
-                <button class="testimonial-btn" id="<?php echo esc_attr($uid); ?>-next" aria-label="Nächste Bewertung">&#8250;</button>
+            <div class="testimonial-controls">
+                <button class="testimonial-btn testimonial-btn--prev" aria-label="<?php esc_attr_e('Vorherige Bewertung', 'annyhase'); ?>">&#8249;</button>
+                <div class="testimonial-dots"></div>
+                <button class="testimonial-btn testimonial-btn--next" aria-label="<?php esc_attr_e('Nächste Bewertung', 'annyhase'); ?>">&#8250;</button>
             </div>
             <?php endif; ?>
+
         </div>
-
-        <script>
-        (function () {
-            const track    = document.getElementById('<?php echo esc_js($uid); ?>-track');
-            const prevBtn  = document.getElementById('<?php echo esc_js($uid); ?>-prev');
-            const nextBtn  = document.getElementById('<?php echo esc_js($uid); ?>-next');
-            const dotsEl   = document.getElementById('<?php echo esc_js($uid); ?>-dots');
-            const controls = document.getElementById('<?php echo esc_js($uid); ?>-controls');
-            if (!track) return;
-
-            const slides     = Array.from(track.children);
-            const total      = slides.length;
-            const cfgPerView = <?php echo (int) $reviews_per_slide; ?>;
-            const cfgSpeed   = <?php echo (int) $reviews_speed; ?> * 1000;
-            let current = 0, perView = cfgPerView, maxPos = 0, timer = null;
-
-            function getPerView() {
-                if (window.innerWidth < 640)  return 1;
-                if (window.innerWidth < 1024) return Math.min(2, cfgPerView);
-                return cfgPerView;
-            }
-
-            function buildDots() {
-                if (!dotsEl) return;
-                dotsEl.innerHTML = '';
-                for (let i = 0; i <= maxPos; i++) {
-                    const d = document.createElement('button');
-                    d.className = 'testimonial-dot' + (i === current ? ' is-active' : '');
-                    d.setAttribute('aria-label', 'Bewertung ' + (i + 1));
-                    d.addEventListener('click', () => go(i));
-                    dotsEl.appendChild(d);
-                }
-            }
-
-            function go(n) {
-                current = Math.max(0, Math.min(n, maxPos));
-                track.style.transform = 'translateX(-' + (current * (100 / perView)) + '%)';
-                if (dotsEl) dotsEl.querySelectorAll('.testimonial-dot').forEach((d, i) =>
-                    d.classList.toggle('is-active', i === current));
-            }
-
-            function startTimer() {
-                if (!cfgSpeed) return;
-                timer = setInterval(() => go(current >= maxPos ? 0 : current + 1), cfgSpeed);
-            }
-            function stopTimer() { clearInterval(timer); timer = null; }
-
-            function init() {
-                perView = getPerView();
-                maxPos  = Math.max(0, total - perView);
-                current = Math.min(current, maxPos);
-                slides.forEach(s => { s.style.flex = '0 0 calc(100% / ' + perView + ')'; });
-                if (controls) controls.style.display = maxPos > 0 ? '' : 'none';
-                buildDots();
-                go(current);
-            }
-
-            if (prevBtn) prevBtn.addEventListener('click', () => go(current - 1));
-            if (nextBtn) nextBtn.addEventListener('click', () => go(current + 1));
-
-            let startX = 0;
-            track.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
-            track.addEventListener('touchend',   e => {
-                const dx = e.changedTouches[0].clientX - startX;
-                if (Math.abs(dx) > 40) go(dx < 0 ? current + 1 : current - 1);
-            });
-
-            const slider = track.closest('.testimonial-slider');
-            slider.addEventListener('mouseenter', stopTimer);
-            slider.addEventListener('mouseleave', startTimer);
-
-            window.addEventListener('resize', init, { passive: true });
-            init();
-            startTimer();
-
-            track.querySelectorAll('.testimonial-card__text').forEach(el => {
-                requestAnimationFrame(() => {
-                    if (el.scrollHeight <= el.clientHeight + 2) return;
-                    const btn = document.createElement('button');
-                    btn.className = 'testimonial-card__more';
-                    btn.textContent = 'Weiterlesen';
-                    btn.addEventListener('click', () => {
-                        const expanded = el.classList.toggle('is-expanded');
-                        btn.textContent = expanded ? 'Weniger anzeigen' : 'Weiterlesen';
-                    });
-                    el.insertAdjacentElement('afterend', btn);
-                });
-            });
-        })();
-        </script>
     </div>
 </section>
