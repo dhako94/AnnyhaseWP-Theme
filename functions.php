@@ -1247,8 +1247,8 @@ function annyhase_get_gallery_ids(int $post_id = 0): array {
         if (!in_array($gid, $ids)) $ids[] = $gid;
     }
 
-    // 3. Fallback: automatisch angehängte Bilder (vom Import)
-    if (count($ids) <= 1) {
+    // 3. Fallback: automatisch angehängte Bilder (vom Import) – nur wenn gar kein Bild vorhanden
+    if (count($ids) === 0) {
         $attached = get_children([
             'post_parent'    => $id,
             'post_type'      => 'attachment',
