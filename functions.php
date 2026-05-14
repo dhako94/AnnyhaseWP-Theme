@@ -317,6 +317,20 @@ add_action('admin_init', function (): void {
 });
 
 /* -------------------------------------------------------
+   Standard-Blogbeiträge einmalig löschen
+------------------------------------------------------- */
+add_action('admin_init', function (): void {
+    if (get_option('annyhase_posts_cleaned')) return;
+
+    $posts = get_posts(['post_type' => 'post', 'numberposts' => -1, 'post_status' => 'any']);
+    foreach ($posts as $post) {
+        wp_delete_post($post->ID, true);
+    }
+
+    update_option('annyhase_posts_cleaned', 1);
+});
+
+/* -------------------------------------------------------
    Enqueue Assets
 ------------------------------------------------------- */
 /**
