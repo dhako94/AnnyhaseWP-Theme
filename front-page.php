@@ -79,7 +79,7 @@
             <article class="product-card">
                 <a href="<?php the_permalink(); ?>" class="product-card__img-wrap" tabindex="-1" aria-hidden="true">
                     <?php if (has_post_thumbnail()): ?>
-                        <?php the_post_thumbnail('product-thumb', ['class' => 'product-card__img', 'loading' => 'lazy']); ?>
+                        <?php the_post_thumbnail('product-thumb', ['class' => 'product-card__img', 'loading' => 'eager']); ?>
                     <?php else: ?>
                         <div class="product-card__img" style="background:var(--color-cream);display:flex;align-items:center;justify-content:center;font-size:3rem">🏺</div>
                     <?php endif; ?>
