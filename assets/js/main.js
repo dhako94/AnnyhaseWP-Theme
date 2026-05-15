@@ -190,41 +190,40 @@
      Testimonials Slider
   ----------------------------------------------- */
   document.querySelectorAll('.testimonial-slider[data-per-slide]').forEach(function (slider) {
-    var track   = slider.querySelector('.testimonial-track');
-    var slides  = Array.from(slider.querySelectorAll('.ts-slide'));
-    var dotsEl  = slider.querySelector('.testimonial-dots');
-    var prevBtn = slider.querySelector('.testimonial-btn--prev');
-    var nextBtn = slider.querySelector('.testimonial-btn--next');
+    var track      = slider.querySelector('.testimonial-track');
+    var slides     = Array.from(slider.querySelectorAll('.ts-slide'));
+    var dotsEl     = slider.querySelector('.testimonial-dots');
+    var prevBtn    = slider.querySelector('.testimonial-btn--prev');
+    var nextBtn    = slider.querySelector('.testimonial-btn--next');
     if (!track || !slides.length) return;
 
-    var perSlide = Math.max(1, parseInt(slider.dataset.perSlide, 10) || 3);
-    var speed    = Math.max(0, parseInt(slider.dataset.speed,    10) || 0);
-    var pages    = Math.ceil(slides.length / perSlide);
-    var cur      = 0;
-    var timer    = null;
+    var maxPerSlide = Math.max(1, parseInt(slider.dataset.perSlide, 10) || 3);
+    var speed       = Math.max(0, parseInt(slider.dataset.speed,    10) || 0);
+    var cur         = 0;
+    var timer       = null;
+    var dots        = [];
+    var lastPages   = 0;
 
-    if (pages <= 1) {
-      if (prevBtn) prevBtn.style.display = 'none';
-      if (nextBtn) nextBtn.style.display = 'none';
-      return;
+    /* Responsive: tablet ≤768px → max 2, mobile ≤480px → always 1 */
+    function effectivePerSlide() {
+      if (window.innerWidth <= 480) return 1;
+      if (window.innerWidth <= 768) return Math.min(2, maxPerSlide);
+      return maxPerSlide;
     }
-
-    function slideW() { return slider.offsetWidth / perSlide; }
+    function getPages() { return Math.max(1, Math.ceil(slides.length / effectivePerSlide())); }
 
     function applyWidths() {
+      var w = slider.offsetWidth / effectivePerSlide();
       slides.forEach(function (s) {
-        s.style.flex     = '0 0 ' + slideW() + 'px';
-        s.style.maxWidth = slideW() + 'px';
+        s.style.flex     = '0 0 ' + w + 'px';
+        s.style.maxWidth = w + 'px';
       });
     }
 
-    track.style.display    = 'flex';
-    track.style.transition = 'transform .45s cubic-bezier(.4,0,.2,1)';
-    applyWidths();
-
-    /* Build dots */
-    var dots = [];
-    if (dotsEl) {
+    function buildDots(pages) {
+      if (!dotsEl) return;
+      dotsEl.innerHTML = '';
+      dots = [];
       for (var i = 0; i < pages; i++) {
         var dot = document.createElement('button');
         dot.className = 'testimonial-dot';
@@ -237,11 +236,20 @@
     }
 
     function goTo(page) {
+      var pages = getPages();
       cur = ((page % pages) + pages) % pages;
+      applyWidths();
       track.style.transform = 'translateX(-' + (cur * slider.offsetWidth) + 'px)';
       dots.forEach(function (d, i) { d.classList.toggle('is-active', i === cur); });
+      if (prevBtn) prevBtn.style.display = pages > 1 ? '' : 'none';
+      if (nextBtn) nextBtn.style.display = pages > 1 ? '' : 'none';
     }
 
+    track.style.display    = 'flex';
+    track.style.transition = 'transform .45s cubic-bezier(.4,0,.2,1)';
+
+    lastPages = getPages();
+    buildDots(lastPages);
     goTo(0);
 
     if (prevBtn) prevBtn.addEventListener('click', function () { goTo(cur - 1); resetTimer(); });
@@ -265,11 +273,16 @@
       if (Math.abs(dx) > 40) { goTo(dx < 0 ? cur + 1 : cur - 1); resetTimer(); }
     });
 
-    /* Recalculate on resize */
+    /* Recalculate on resize – rebuild dots if page count changes */
     window.addEventListener('resize', function () {
-      applyWidths();
+      var newPages = getPages();
+      if (newPages !== lastPages) {
+        buildDots(newPages);
+        lastPages = newPages;
+        if (cur >= newPages) cur = newPages - 1;
+      }
       track.style.transition = 'none';
-      track.style.transform  = 'translateX(-' + (cur * slider.offsetWidth) + 'px)';
+      goTo(cur);
       requestAnimationFrame(function () {
         track.style.transition = 'transform .45s cubic-bezier(.4,0,.2,1)';
       });

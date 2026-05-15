@@ -799,12 +799,14 @@ p:last-child { margin-bottom: 0; }
   will-change: transform;
 }
 .ts-slide {
-  flex: 0 0 calc(100% / 3); /* overridden by JS on resize */
+  flex: 0 0 100%; /* safe default before JS; overridden by JS */
   box-sizing: border-box;
   padding: 0 .75rem;
   display: flex;
   align-items: stretch;
 }
+@media (min-width: 481px) { .ts-slide { flex: 0 0 50%; } }
+@media (min-width: 769px) { .ts-slide { flex: 0 0 calc(100% / 3); } }
 .testimonial-card {
   background: var(--color-surface);
   border-radius: var(--radius-lg);
@@ -1454,10 +1456,8 @@ a.kf-contact-item:hover .kf-contact-item__arrow {
 .product-breadcrumb__current {
   color: var(--color-text);
   font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 26ch;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* Produktseiten-Wrapper – eigener breiter Container */

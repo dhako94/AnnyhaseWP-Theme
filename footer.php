@@ -47,7 +47,6 @@ $ftr_hastext  = $ftr_mode !== 'logo_only' || !$ftr_has_any;
                         <?php if ($ftr_logo_id): ?>
                             <?php echo wp_get_attachment_image($ftr_logo_id, [240, 60], false, [
                                 'style' => 'height:44px;width:auto;object-fit:contain',
-                                'alt'   => esc_attr($ftr_title),
                             ]); ?>
                         <?php else: ?>
                             <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/FooterLogo.png'); ?>" alt="<?php echo esc_attr($ftr_title); ?>" style="height:44px;width:auto;object-fit:contain">
