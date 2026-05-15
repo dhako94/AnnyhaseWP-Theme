@@ -799,14 +799,12 @@ p:last-child { margin-bottom: 0; }
   will-change: transform;
 }
 .ts-slide {
-  flex: 0 0 100%; /* safe default before JS; overridden by JS */
+  flex: 0 0 calc(100% / 3); /* overridden by JS on resize */
   box-sizing: border-box;
   padding: 0 .75rem;
   display: flex;
   align-items: stretch;
 }
-@media (min-width: 481px) { .ts-slide { flex: 0 0 50%; } }
-@media (min-width: 769px) { .ts-slide { flex: 0 0 calc(100% / 3); } }
 .testimonial-card {
   background: var(--color-surface);
   border-radius: var(--radius-lg);
