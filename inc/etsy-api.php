@@ -942,7 +942,9 @@ function etsy_sync_auto_yoast_meta(int $post_id): void {
 
     if (!function_exists('annyhase_build_yoast_fields')) return;
     $fields = annyhase_build_yoast_fields($post_id);
-    if ($fields['focuskw'] && !get_post_meta($post_id, '_yoast_wpseo_focuskw', true)) {
+    // Always overwrite — replaces stale or auto-generated values from old syncs.
+    // Only skipped when no category keyword is available (empty string).
+    if ($fields['focuskw']) {
         update_post_meta($post_id, '_yoast_wpseo_focuskw', $fields['focuskw']);
     }
 }
