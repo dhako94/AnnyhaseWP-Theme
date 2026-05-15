@@ -684,10 +684,11 @@ add_action('wp_head', function (): void {
 }, 10);
 
 /* -------------------------------------------------------
-   SEO: Custom Yoast variable %%short_title%%
-   Returns the post title truncated at ~40 chars (word boundary).
-   Use in Yoast → Content Types → Produkt title template instead
-   of %%title%%: %%short_title%% – %%primary_category%% | %%sitename%%
+   SEO: Custom Yoast variables for produkt CPT
+   %%short_title%%   – post title truncated at ~40 chars (word boundary)
+   %%produkt_kat%%   – first produktkategorie term name
+   Use in Yoast → Content Types → Produkt title template:
+   %%short_title%% – %%produkt_kat%% | %%sitename%%
 ------------------------------------------------------- */
 add_action('wpseo_register_extra_replacements', function (): void {
     wpseo_register_var_replacement(
@@ -703,6 +704,19 @@ add_action('wpseo_register_extra_replacements', function (): void {
         },
         'advanced',
         'Gekürzter Produkttitel (max. ~40 Zeichen) – für kompakte SEO-Titel'
+    );
+
+    wpseo_register_var_replacement(
+        '%%produkt_kat%%',
+        function (): string {
+            $post_id = get_the_ID();
+            if (!$post_id) return '';
+            $terms = get_the_terms($post_id, 'produktkategorie');
+            if (!$terms || is_wp_error($terms)) return '';
+            return $terms[0]->name;
+        },
+        'advanced',
+        'Erste Produktkategorie (produktkategorie-Taxonomie) – für SEO-Titel'
     );
 });
 
