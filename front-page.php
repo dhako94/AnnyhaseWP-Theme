@@ -284,8 +284,6 @@
 <!-- ============================================================
      REVIEWS / TESTIMONIALS
      ============================================================ -->
-<div id="bewertungen">
 <?php get_template_part('inc/testimonials'); ?>
-</div>
 
 <?php get_footer(); ?>

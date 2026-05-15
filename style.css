@@ -103,7 +103,7 @@ p:last-child { margin-bottom: 0; }
 .section { padding-top: var(--section-gap); padding-bottom: var(--section-gap); }
 .section--alt { background-color: var(--color-bg-alt); }
 .section--cream { background-color: var(--color-cream); }
-.section--no-bottom { padding-bottom: 0; }
+.section.section--no-bottom { padding-bottom: 0; padding-block-end: 0; }
 
 .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--gap); }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); }
