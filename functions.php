@@ -59,7 +59,7 @@ add_action('admin_init', function (): void {
         wp_redirect(admin_url());
         exit;
     }
-    if ($pagenow === 'edit.php' && (empty($_GET['post_type']) || $_GET['post_type'] === 'post')) {
+    if ($pagenow === 'edit.php' && (empty($_GET['post_type']) || sanitize_key($_GET['post_type']) === 'post')) {
         wp_redirect(admin_url());
         exit;
     }
@@ -192,7 +192,7 @@ add_filter('nav_menu_css_class', function (array $classes, WP_Post $item): array
 }, 10, 2);
 
 /* -------------------------------------------------------
-   Standard-Menü automatisch anlegen (einmalig)
+   Create default navigation menu automatically (once)
 ------------------------------------------------------- */
 /**
  * Creates and assigns a default primary navigation menu on first activation.
@@ -405,6 +405,18 @@ function annyhase_enqueue(): void {
 add_action('wp_enqueue_scripts', 'annyhase_enqueue');
 
 /* -------------------------------------------------------
+   SEO plugin detection.
+   When Yoast, Rank Math, or AIOSEO is active the theme
+   suppresses its own canonical / OG / Twitter / JSON-LD
+   output to avoid duplicate, conflicting head tags.
+------------------------------------------------------- */
+function annyhase_seo_plugin_active(): bool {
+    return defined('WPSEO_VERSION')              // Yoast SEO (free & premium)
+        || defined('RANK_MATH_VERSION')          // Rank Math
+        || class_exists('AIOSEO\Plugin\AIOSEO'); // All in One SEO
+}
+
+/* -------------------------------------------------------
    SEO: Resource hints – dns-prefetch (Etsy)
    Fonts are self-hosted, so no Google Fonts preconnect needed.
 ------------------------------------------------------- */
@@ -414,7 +426,9 @@ add_action('wp_head', function (): void {
 
 /* -------------------------------------------------------
    SEO: Canonical URL tag
+   Suppressed when a dedicated SEO plugin is active.
 ------------------------------------------------------- */
+if (!annyhase_seo_plugin_active()):
 add_action('wp_head', function (): void {
     $canonical = '';
 
@@ -435,12 +449,14 @@ add_action('wp_head', function (): void {
 
 /* -------------------------------------------------------
    SEO: robots noindex for 404 and search result pages
+   Suppressed when a dedicated SEO plugin is active.
 ------------------------------------------------------- */
 add_action('wp_head', function (): void {
     if (is_404() || is_search()) {
         echo '<meta name="robots" content="noindex, follow">' . "\n";
     }
 }, 5);
+endif; // !annyhase_seo_plugin_active()
 
 /* -------------------------------------------------------
    SEO: Google Search Console Verification
@@ -474,7 +490,9 @@ HTML;
 
 /* -------------------------------------------------------
    SEO: Open Graph + Twitter Card Meta-Tags
+   Suppressed when a dedicated SEO plugin is active.
 ------------------------------------------------------- */
+if (!annyhase_seo_plugin_active()):
 add_action('wp_head', function (): void {
     global $post;
 
@@ -534,10 +552,14 @@ add_action('wp_head', function (): void {
         echo '<meta name="twitter:image" content="' . $i . '">' . "\n";
     }
 }, 5);
+endif; // !annyhase_seo_plugin_active()
 
 /* -------------------------------------------------------
    SEO: Schema.org JSON-LD (Organization, WebSite, Product, BreadcrumbList)
+   Suppressed when a dedicated SEO plugin is active to avoid
+   duplicate schemas alongside Yoast / Rank Math output.
 ------------------------------------------------------- */
+if (!annyhase_seo_plugin_active()):
 add_action('wp_head', function (): void {
     global $post;
 
@@ -648,6 +670,7 @@ add_action('wp_head', function (): void {
     );
     echo "\n</script>\n";
 }, 10);
+endif; // !annyhase_seo_plugin_active()
 
 /* -------------------------------------------------------
    SEO: rel="prev" / rel="next" for archive pages
@@ -733,6 +756,7 @@ add_action('init', 'annyhase_register_cpts');
 add_filter('manage_produkt_posts_columns', function (array $cols): array {
     $new = [];
     // Vorschaubild ganz links (nach Checkbox)
+    // Thumbnail column on the far left (after checkbox)
     $new['cb']                   = $cols['cb'];
     $new['produkt_thumb']        = __('Bild', 'annyhase');
     $new['produkt_highlight']    = '⭐';
@@ -854,7 +878,7 @@ add_action('admin_init', function (): void {
     if (
         !wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_wpnonce'] ?? '')), 'toggle_hl_' . $post_id) ||
         !current_user_can('edit_post', $post_id)
-    ) wp_die('Ungültige Anfrage.');
+    ) wp_die(esc_html__('Invalid request.', 'annyhase'));
 
     $current = get_post_meta($post_id, '_produkt_highlight', true);
     update_post_meta($post_id, '_produkt_highlight', $current === '1' ? '0' : '1');
@@ -939,7 +963,7 @@ add_action('admin_head', function (): void {
     </style>';
 });
 
-/* Bewertungs-Highlight-Toggle */
+/* Review highlight toggle */
 add_action('admin_init', function (): void {
     $action = sanitize_key($_GET['bewertung_action'] ?? '');
     if ($action !== 'toggle_highlight' || empty($_GET['bewertung_id'])) return;
@@ -948,7 +972,7 @@ add_action('admin_init', function (): void {
     if (
         !wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_wpnonce'] ?? '')), 'toggle_bhl_' . $post_id) ||
         !current_user_can('edit_post', $post_id)
-    ) wp_die('Ungültige Anfrage.');
+    ) wp_die(esc_html__('Invalid request.', 'annyhase'));
 
     $current = get_post_meta($post_id, '_bewertung_highlight', true);
     update_post_meta($post_id, '_bewertung_highlight', $current === '1' ? '0' : '1');
@@ -1698,18 +1722,18 @@ function annyhase_etsy_banner_logo(): void {
     echo '<div style="display:flex;align-items:center;gap:1rem">';
 
     if ($custom_id) {
-        // Hochgeladenes Bild als Icon-Teil
+        // Custom uploaded image as icon
         echo wp_get_attachment_image($custom_id, [200, 64], false, [
             'style' => 'height:52px;width:auto;object-fit:contain',
             'alt'   => '',
         ]);
     } else {
-        // Standard: mitgeliefertes Etsy-Logo aus dem Theme
+        // Fallback: bundled Etsy logo from the theme
         $default_logo = get_template_directory_uri() . '/assets/img/etsy-logo.png';
         echo '<img src="' . esc_url($default_logo) . '" alt="" height="52" style="height:52px;width:auto;object-fit:contain">';
     }
 
-    // Trennlinie + "Etsy" Wordmark – immer sichtbar
+    // Separator + "Etsy" wordmark – always visible
     echo '<span style="display:inline-flex;align-items:center;gap:.85rem;color:rgba(255,255,255,0.4);font-size:1.8rem;line-height:1;user-select:none">|</span>';
     echo '<span style="font-family:Georgia,\'Times New Roman\',serif;font-size:2rem;font-weight:700;color:#fff;letter-spacing:.02em;line-height:1">Etsy</span>';
 
@@ -1768,6 +1792,23 @@ function annyhase_product_badge(int $post_id = 0): string {
 ------------------------------------------------------- */
 add_filter('excerpt_length', fn() => 20);
 add_filter('excerpt_more',   fn() => '…');
+
+/* -------------------------------------------------------
+   Fallback alt text for product images.
+   When an attachment has no alt text in the media library
+   (common for Etsy-imported images), fall back to the
+   parent product's title so every image is descriptive.
+------------------------------------------------------- */
+add_filter('wp_get_attachment_image_attributes', function (array $attr, WP_Post $attachment): array {
+    if (!empty($attr['alt'])) return $attr;
+
+    $parent_id = (int) $attachment->post_parent;
+    if ($parent_id && get_post_type($parent_id) === 'produkt') {
+        $attr['alt'] = get_the_title($parent_id);
+    }
+
+    return $attr;
+}, 10, 2);
 
 /* -------------------------------------------------------
    Theme Customizer

@@ -35,9 +35,12 @@
             ?>
             <a href="<?php echo esc_url(home_url('/')); ?>" class="site-logo" aria-label="<?php echo esc_attr($hdr_name); ?>">
                 <?php if ($hdr_logo):
-                    if (has_custom_logo()) {
-                        preg_match('/<img[^>]+>/i', get_custom_logo(), $m);
-                        echo $m[0] ?? '';
+                    $logo_id = absint(get_theme_mod('custom_logo'));
+                    if ($logo_id) {
+                        echo wp_get_attachment_image($logo_id, [300, 80], false, [
+                            'class' => 'custom-logo',
+                            'alt'   => esc_attr($hdr_name),
+                        ]);
                     } else {
                         echo '<img src="' . esc_url(get_template_directory_uri() . '/assets/img/HeaderLogo.png') . '" alt="' . esc_attr($hdr_name) . '" style="height:44px;width:auto;object-fit:contain">';
                     }

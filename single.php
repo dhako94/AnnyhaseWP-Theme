@@ -301,7 +301,7 @@ $has_cats       = !empty($all_cats) && !is_wp_error($all_cats);
                     <a href="<?php the_permalink(); ?>" class="related-card">
                         <div class="related-card__img-wrap">
                             <?php if (has_post_thumbnail()): ?>
-                                <?php the_post_thumbnail('product-thumb', ['class' => 'related-card__img', 'loading' => 'lazy']); ?>
+                                <?php the_post_thumbnail('product-thumb', ['class' => 'related-card__img', 'loading' => 'lazy', 'alt' => get_the_title()]); ?>
                             <?php else: ?>
                                 <div class="related-card__img--empty">🏺</div>
                             <?php endif; ?>

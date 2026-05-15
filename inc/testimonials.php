@@ -17,6 +17,7 @@ if (false === $cards) {
         'post_status'    => 'publish',
         'orderby'        => 'date',
         'order'          => 'DESC',
+        'no_found_rows'  => true,
     ]);
 
     if ($reviews_query->have_posts()):
@@ -64,7 +65,7 @@ $uid = 'ts-' . substr(md5(uniqid('', true)), 0, 6);
                 <div class="ts-slide">
                     <div class="testimonial-card">
                         <div class="testimonial-card__stars"><?php echo str_repeat('★', (int) $card['stars']); ?></div>
-                        <div class="testimonial-card__text"><?php echo $card['text']; ?></div>
+                        <div class="testimonial-card__text"><?php echo wp_kses_post($card['text']); ?></div>
                     </div>
                 </div>
                 <?php endforeach; ?>

@@ -102,7 +102,7 @@ function annyhase_dismiss_smtp_notice(): void {
     wp_die();
 }
 
-/* Hinweis zurücksetzen wenn Theme neu aktiviert wird */
+/* Reset notice when theme is re-activated */
 add_action('after_switch_theme', function (): void {
     delete_option('annyhase_dismiss_smtp_notice');
 });
