@@ -884,13 +884,25 @@ p:last-child { margin-bottom: 0; }
   display: flex; align-items: center; justify-content: center;
   transition: background .2s, border-color .2s, color .2s;
   padding: 0;
+  flex-shrink: 0;
 }
 .testimonial-btn:hover {
   background: var(--color-terracotta);
   border-color: var(--color-terracotta);
   color: #fff;
 }
-.testimonial-dots { display: flex; gap: .5rem; align-items: center; }
+.testimonial-dots {
+  display: flex; gap: .5rem; align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  overflow: hidden;
+  max-height: 1rem;
+  min-width: 0;
+}
+@media (max-width: 479px) {
+  .testimonial-btn { width: 2.25rem; height: 2.25rem; font-size: 1.2rem; }
+  .testimonial-controls { gap: .625rem; }
+}
 .testimonial-dot {
   width: .5rem; height: .5rem;
   border-radius: 50%;
