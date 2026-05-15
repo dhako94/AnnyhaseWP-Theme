@@ -13,6 +13,7 @@ defined('ABSPATH') || exit;
 require_once get_template_directory() . '/inc/etsy-api.php';
 require_once get_template_directory() . '/inc/etsy-media.php';
 require_once get_template_directory() . '/inc/plugin-setup.php';
+require_once get_template_directory() . '/inc/seo-templates.php';
 
 /* -------------------------------------------------------
    Disable comments and blog posts completely

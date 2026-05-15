@@ -378,6 +378,9 @@ function etsy_sync_admin_page(): void {
         </div>
 
     </div>
+
+    <?php annyhase_seo_settings_form(); ?>
+
     </div>
 
     <script>
@@ -911,27 +914,25 @@ function etsy_sync_get_review_sync_status(): array {
    ================================================================= */
 
 /**
- * Writes Yoast SEO meta fields from Etsy listing data.
- * Only populates empty fields so manual edits in the admin survive re-syncs.
+ * Writes Yoast SEO meta fields from Etsy listing data using the SEO
+ * template system (inc/seo-templates.php). Only populates empty fields
+ * so manual edits in the Yoast snippet editor survive re-syncs.
  * No-op when Yoast SEO is not active.
  */
 function etsy_sync_auto_yoast_meta(int $post_id, string $title, string $desc): void {
     if (!defined('WPSEO_VERSION')) return;
+    if (!function_exists('annyhase_build_yoast_fields')) return;
 
-    if (!get_post_meta($post_id, '_yoast_wpseo_focuskw', true)) {
-        update_post_meta($post_id, '_yoast_wpseo_focuskw', $title);
+    $fields = annyhase_build_yoast_fields($post_id, $title, $desc);
+
+    if ($fields['focuskw'] && !get_post_meta($post_id, '_yoast_wpseo_focuskw', true)) {
+        update_post_meta($post_id, '_yoast_wpseo_focuskw', $fields['focuskw']);
     }
-
-    if (!get_post_meta($post_id, '_yoast_wpseo_metadesc', true)) {
-        $clean = preg_replace('/\s+/', ' ', wp_strip_all_tags($desc));
-        $short = trim(mb_substr($clean, 0, 155));
-        if (mb_strlen($clean) > 155) {
-            $last_space = mb_strrpos($short, ' ');
-            if ($last_space > 80) $short = mb_substr($short, 0, $last_space);
-        }
-        if ($short) {
-            update_post_meta($post_id, '_yoast_wpseo_metadesc', $short);
-        }
+    if ($fields['title'] && !get_post_meta($post_id, '_yoast_wpseo_title', true)) {
+        update_post_meta($post_id, '_yoast_wpseo_title', $fields['title']);
+    }
+    if ($fields['metadesc'] && !get_post_meta($post_id, '_yoast_wpseo_metadesc', true)) {
+        update_post_meta($post_id, '_yoast_wpseo_metadesc', $fields['metadesc']);
     }
 }
 
