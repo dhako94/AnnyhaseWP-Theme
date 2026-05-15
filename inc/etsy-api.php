@@ -379,8 +379,6 @@ function etsy_sync_admin_page(): void {
 
     </div>
 
-    <?php annyhase_seo_settings_form(); ?>
-
     </div>
 
     <script>
@@ -914,25 +912,38 @@ function etsy_sync_get_review_sync_status(): array {
    ================================================================= */
 
 /**
- * Writes Yoast SEO meta fields from Etsy listing data using the SEO
- * template system (inc/seo-templates.php). Only populates empty fields
- * so manual edits in the Yoast snippet editor survive re-syncs.
+ * Builds a clean excerpt from an Etsy listing description.
+ * Strips HTML, collapses whitespace, trims to $max chars at a word boundary.
+ * Written to post_excerpt so Yoast's %%excerpt%% template variable works.
+ */
+function etsy_sync_build_excerpt(string $desc, int $max = 155): string {
+    $clean = trim((string) preg_replace('/\s+/', ' ', wp_strip_all_tags($desc)));
+    if (mb_strlen($clean) <= $max) return $clean;
+    $cut        = mb_substr($clean, 0, $max);
+    $last_space = mb_strrpos($cut, ' ');
+    if ($last_space !== false && $last_space > (int) ($max * 0.5)) {
+        $cut = mb_substr($cut, 0, $last_space);
+    }
+    return rtrim($cut, '.,;:–-');
+}
+
+/**
+ * Sets the Yoast focus keyphrase from the product's primary category SEO
+ * keyword. Clears any previously auto-generated title/metadesc overrides so
+ * Yoast's own Content Types templates control the format going forward.
  * No-op when Yoast SEO is not active.
  */
-function etsy_sync_auto_yoast_meta(int $post_id, string $title, string $desc): void {
+function etsy_sync_auto_yoast_meta(int $post_id): void {
     if (!defined('WPSEO_VERSION')) return;
+
+    // Remove auto-generated overrides — Yoast templates handle formatting.
+    delete_post_meta($post_id, '_yoast_wpseo_title');
+    delete_post_meta($post_id, '_yoast_wpseo_metadesc');
+
     if (!function_exists('annyhase_build_yoast_fields')) return;
-
-    $fields = annyhase_build_yoast_fields($post_id, $title, $desc);
-
+    $fields = annyhase_build_yoast_fields($post_id);
     if ($fields['focuskw'] && !get_post_meta($post_id, '_yoast_wpseo_focuskw', true)) {
         update_post_meta($post_id, '_yoast_wpseo_focuskw', $fields['focuskw']);
-    }
-    if ($fields['title'] && !get_post_meta($post_id, '_yoast_wpseo_title', true)) {
-        update_post_meta($post_id, '_yoast_wpseo_title', $fields['title']);
-    }
-    if ($fields['metadesc'] && !get_post_meta($post_id, '_yoast_wpseo_metadesc', true)) {
-        update_post_meta($post_id, '_yoast_wpseo_metadesc', $fields['metadesc']);
     }
 }
 
@@ -1143,11 +1154,11 @@ function etsy_sync_products(bool $update_existing = false): array {
                 $post_id = $existing[0];
                 if ($update_existing) {
                     wp_update_post(['ID' => $post_id, 'post_title' => $title,
-                        'post_content' => $desc, 'post_status' => 'publish']);
+                        'post_content' => $desc, 'post_excerpt' => etsy_sync_build_excerpt($desc), 'post_status' => 'publish']);
                     if ($price_str) update_post_meta($post_id, '_produkt_preis', $price_str);
                     if ($etsy_url)  update_post_meta($post_id, '_etsy_url',      $etsy_url);
                     etsy_sync_set_product_term($post_id, $section_id, $sections);
-                    etsy_sync_auto_yoast_meta($post_id, $title, $desc);
+                    etsy_sync_auto_yoast_meta($post_id);
                     $result['updated']++;
                 }
                 if (!get_post_thumbnail_id($post_id)) {
@@ -1158,14 +1169,14 @@ function etsy_sync_products(bool $update_existing = false): array {
                 if (!$update_existing) $result['skipped']++;
             } else {
                 $post_id = wp_insert_post(['post_type' => 'produkt', 'post_title' => $title,
-                    'post_content' => $desc, 'post_status' => 'publish']);
+                    'post_content' => $desc, 'post_excerpt' => etsy_sync_build_excerpt($desc), 'post_status' => 'publish']);
                 if (!$post_id || is_wp_error($post_id)) { $result['errors']++; continue; }
                 update_post_meta($post_id, '_etsy_listing_id', $listing_id);
                 update_post_meta($post_id, '_is_etsy_produkt',  '1');
                 if ($price_str) update_post_meta($post_id, '_produkt_preis', $price_str);
                 if ($etsy_url)  update_post_meta($post_id, '_etsy_url',      $etsy_url);
                 etsy_sync_set_product_term($post_id, $section_id, $sections);
-                etsy_sync_auto_yoast_meta($post_id, $title, $desc);
+                etsy_sync_auto_yoast_meta($post_id);
                 $mc = etsy_sync_import_listing_media($post_id, $listing, false);
                 $result['images_ok']  += $mc['images_ok'];
                 $result['images_err'] += $mc['images_err'];
@@ -1303,7 +1314,7 @@ add_action('wp_ajax_etsy_sync_products_batch', function (): void {
                 if ($price_str) update_post_meta($post_id, '_produkt_preis', $price_str);
                 if ($etsy_url)  update_post_meta($post_id, '_etsy_url',      $etsy_url);
                 etsy_sync_set_product_term($post_id, $section_id, $sections);
-                etsy_sync_auto_yoast_meta($post_id, $title, $desc);
+                etsy_sync_auto_yoast_meta($post_id);
                 $updated++;
             }
         } else {
@@ -1315,7 +1326,7 @@ add_action('wp_ajax_etsy_sync_products_batch', function (): void {
                 if ($price_str) update_post_meta($post_id, '_produkt_preis', $price_str);
                 if ($etsy_url)  update_post_meta($post_id, '_etsy_url',      $etsy_url);
                 etsy_sync_set_product_term($post_id, $section_id, $sections);
-                etsy_sync_auto_yoast_meta($post_id, $title, $desc);
+                etsy_sync_auto_yoast_meta($post_id);
                 $new++;
             }
         }
