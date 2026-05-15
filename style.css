@@ -895,9 +895,8 @@ p:last-child { margin-bottom: 0; }
   display: flex; gap: .5rem; align-items: center;
   flex-wrap: wrap;
   justify-content: center;
-  overflow: hidden;
-  max-height: 1rem;
   min-width: 0;
+  padding-block: .2rem;
 }
 @media (max-width: 479px) {
   .testimonial-btn { width: 2.25rem; height: 2.25rem; font-size: 1.2rem; }
