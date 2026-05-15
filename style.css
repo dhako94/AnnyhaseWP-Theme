@@ -103,6 +103,7 @@ p:last-child { margin-bottom: 0; }
 .section { padding-block: var(--section-gap); }
 .section--alt { background-color: var(--color-bg-alt); }
 .section--cream { background-color: var(--color-cream); }
+.section--no-bottom { padding-bottom: 0; }
 
 .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--gap); }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); }
@@ -796,7 +797,7 @@ p:last-child { margin-bottom: 0; }
 .testimonial-slider { overflow: hidden; }
 .testimonial-track {
   display: flex;
-  transition: transform .45s cubic-bezier(.4, 0, .2, 1);
+  transition: transform .65s cubic-bezier(.4, 0, .2, 1);
   will-change: transform;
 }
 .ts-slide {

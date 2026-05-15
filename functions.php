@@ -1371,6 +1371,8 @@ add_action('save_post_bewertung',  function (): void { delete_transient('annyhas
 add_action('before_delete_post',   function (int $id): void {
     if (get_post_type($id) === 'bewertung') delete_transient('annyhase_reviews_data');
 });
+/* Also clear when Customizer review settings change */
+add_action('customize_save_after', function (): void { delete_transient('annyhase_reviews_data'); });
 
 /* -------------------------------------------------------
    E-Mail HTML-Template Helpers
