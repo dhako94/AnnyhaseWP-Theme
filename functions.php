@@ -15,27 +15,6 @@ require_once get_template_directory() . '/inc/etsy-media.php';
 require_once get_template_directory() . '/inc/plugin-setup.php';
 
 /* -------------------------------------------------------
-   Disable WordPress emoji (prevents external requests to s.w.org)
-   Modern browsers render emoji natively; the WP script is unnecessary.
-------------------------------------------------------- */
-add_action('init', function (): void {
-    remove_action('wp_head',             'print_emoji_detection_script', 7);
-    remove_action('wp_print_styles',     'print_emoji_styles');
-    remove_action('admin_print_scripts', 'print_emoji_detection_script');
-    remove_action('admin_print_styles',  'print_emoji_styles');
-    remove_filter('the_content_feed',    'wp_staticize_emoji');
-    remove_filter('comment_text_rss',    'wp_staticize_emoji');
-    remove_filter('wp_mail',             'wp_staticize_emoji_for_email');
-    add_filter('tiny_mce_plugins',       fn($p) => array_diff($p, ['wpemoji']));
-    add_filter('wp_resource_hints', function (array $urls, string $relation_type): array {
-        if ($relation_type === 'dns-prefetch') {
-            return array_filter($urls, fn($u) => !str_contains(is_array($u) ? $u['href'] : $u, 's.w.org'));
-        }
-        return $urls;
-    }, 10, 2);
-});
-
-/* -------------------------------------------------------
    Disable comments and blog posts completely
 ------------------------------------------------------- */
 
