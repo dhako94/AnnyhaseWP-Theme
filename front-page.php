@@ -1,4 +1,4 @@
-﻿<?php defined('ABSPATH') || exit; get_header(); ?>
+<?php defined('ABSPATH') || exit; get_header(); ?>
 
 <!-- ============================================================
      HERO SECTION

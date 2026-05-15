@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 defined('ABSPATH') || exit;
 $archive_label   = get_theme_mod('annyhase_archive_label', 'Alle Produkte');
 $archive_columns = get_theme_mod('annyhase_archive_columns', '4');

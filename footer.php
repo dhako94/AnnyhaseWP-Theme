@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 defined('ABSPATH') || exit;
 $etsy_url      = get_theme_mod('annyhase_etsy_shop_url', 'https://www.etsy.com/shop/Annyhase');
 $instagram_url = get_theme_mod('annyhase_instagram_url', 'https://www.instagram.com/annyhase_official');
