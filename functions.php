@@ -684,63 +684,27 @@ add_action('wp_head', function (): void {
 }, 10);
 
 /* -------------------------------------------------------
-   SEO: Yoast title truncation for single product pages
-   Keeps "… – Category | Sitename" visible within ~60 chars
-   while leaving the post_title (page heading) untouched.
+   SEO: Custom Yoast variable %%short_title%%
+   Returns the post title truncated at ~40 chars (word boundary).
+   Use in Yoast → Content Types → Produkt title template instead
+   of %%title%%: %%short_title%% – %%primary_category%% | %%sitename%%
 ------------------------------------------------------- */
-add_filter('wpseo_title', function (string $title): string {
-    if (!is_singular('produkt')) return $title;
-
-    $max = 60;
-    if (mb_strlen($title) <= $max) return $title;
-
-    $site_name = get_bloginfo('name');
-    $site_sfx  = ' | ' . $site_name;
-    $site_pos  = mb_strrpos($title, $site_sfx);
-
-    // No recognisable suffix — plain word-boundary truncation
-    if ($site_pos === false) {
-        $cut = mb_substr($title, 0, $max - 1);
-        $sp  = mb_strrpos($cut, ' ');
-        return ($sp > 10 ? mb_substr($cut, 0, $sp) : $cut) . '…';
-    }
-
-    $before_site = mb_substr($title, 0, $site_pos);
-
-    // Detect category separator (en-dash or hyphen, last occurrence)
-    $sep     = ' – ';
-    $cat_pos = mb_strrpos($before_site, $sep);
-    if ($cat_pos === false) {
-        $sep     = ' - ';
-        $cat_pos = mb_strrpos($before_site, $sep);
-    }
-
-    if ($cat_pos !== false) {
-        $full_sfx    = mb_substr($before_site, $cat_pos) . $site_sfx;
-        $product_part = mb_substr($before_site, 0, $cat_pos);
-    } else {
-        $full_sfx    = $site_sfx;
-        $product_part = $before_site;
-    }
-
-    $max_product = $max - mb_strlen($full_sfx) - 1; // -1 for ellipsis
-
-    // Suffix too long to fit — fall back to plain truncation
-    if ($max_product < 8) {
-        $cut = mb_substr($title, 0, $max - 1);
-        $sp  = mb_strrpos($cut, ' ');
-        return ($sp > 10 ? mb_substr($cut, 0, $sp) : $cut) . '…';
-    }
-
-    // Product title fits — nothing to do
-    if (mb_strlen($product_part) <= $max_product) return $title;
-
-    $cut = mb_substr($product_part, 0, $max_product);
-    $sp  = mb_strrpos($cut, ' ');
-    if ($sp !== false && $sp > 5) $cut = mb_substr($cut, 0, $sp);
-
-    return rtrim($cut, '.,;:-–') . '…' . $full_sfx;
-}, 10);
+add_action('wpseo_register_extra_replacements', function (): void {
+    wpseo_register_var_replacement(
+        '%%short_title%%',
+        function (): string {
+            $title = get_the_title();
+            $max   = 40;
+            if (mb_strlen($title) <= $max) return $title;
+            $cut = mb_substr($title, 0, $max);
+            $sp  = mb_strrpos($cut, ' ');
+            if ($sp !== false && $sp > 5) $cut = mb_substr($cut, 0, $sp);
+            return rtrim($cut, '.,;:-–');
+        },
+        'advanced',
+        'Gekürzter Produkttitel (max. ~40 Zeichen) – für kompakte SEO-Titel'
+    );
+});
 
 /* -------------------------------------------------------
    SEO: rel="prev" / rel="next" for archive pages
