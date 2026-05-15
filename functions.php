@@ -1933,7 +1933,7 @@ function annyhase_customizer(WP_Customize_Manager $c): void {
         'label'       => 'Gesamt angezeigte Bewertungen',
         'section'     => 'annyhase_reviews',
         'type'        => 'number',
-        'input_attrs' => ['min' => 1, 'max' => 12, 'step' => 1],
+        'input_attrs' => ['min' => 1, 'max' => 50, 'step' => 1],
     ]);
 
     $c->add_setting('annyhase_reviews_per_slide', ['default' => 3, 'sanitize_callback' => 'absint', 'transport' => 'refresh']);

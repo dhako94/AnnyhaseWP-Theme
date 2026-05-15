@@ -39,7 +39,7 @@ if (false === $cards) {
     set_transient('annyhase_reviews_data', $cards, 5 * MINUTE_IN_SECONDS);
 }
 
-$reviews_total     = max(1, min(12, absint(get_theme_mod('annyhase_reviews_total',     6))));
+$reviews_total     = max(1, min(50, absint(get_theme_mod('annyhase_reviews_total',     6))));
 $reviews_per_slide = max(1, min(5,  absint(get_theme_mod('annyhase_reviews_per_slide', 3))));
 $reviews_speed     = absint(get_theme_mod('annyhase_reviews_speed', 6));
 $cards             = array_slice($cards, 0, $reviews_total);
@@ -51,7 +51,7 @@ if (!$card_count) return;
 $uid = 'ts-' . substr(md5(uniqid('', true)), 0, 6);
 ?>
 
-<section class="section section--alt section--no-bottom">
+<section class="section section--alt" style="padding-bottom:0">
     <div class="container">
         <div class="section-header centered reveal">
             <span class="section-label"><?php echo esc_html(get_theme_mod('annyhase_reviews_label', 'Kundenstimmen')); ?></span>
