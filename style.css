@@ -562,6 +562,7 @@ p:last-child { margin-bottom: 0; }
   text-transform: uppercase;
   color: var(--color-text-muted);
   margin-bottom: .35rem;
+  overflow-wrap: break-word;
 }
 .product-card__title {
   font-family: var(--font-body);
