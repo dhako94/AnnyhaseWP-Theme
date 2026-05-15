@@ -910,6 +910,31 @@ function etsy_sync_get_review_sync_status(): array {
    PRODUCT SYNC – helpers
    ================================================================= */
 
+/**
+ * Writes Yoast SEO meta fields from Etsy listing data.
+ * Only populates empty fields so manual edits in the admin survive re-syncs.
+ * No-op when Yoast SEO is not active.
+ */
+function etsy_sync_auto_yoast_meta(int $post_id, string $title, string $desc): void {
+    if (!defined('WPSEO_VERSION')) return;
+
+    if (!get_post_meta($post_id, '_yoast_wpseo_focuskw', true)) {
+        update_post_meta($post_id, '_yoast_wpseo_focuskw', $title);
+    }
+
+    if (!get_post_meta($post_id, '_yoast_wpseo_metadesc', true)) {
+        $clean = preg_replace('/\s+/', ' ', wp_strip_all_tags($desc));
+        $short = trim(mb_substr($clean, 0, 155));
+        if (mb_strlen($clean) > 155) {
+            $last_space = mb_strrpos($short, ' ');
+            if ($last_space > 80) $short = mb_substr($short, 0, $last_space);
+        }
+        if ($short) {
+            update_post_meta($post_id, '_yoast_wpseo_metadesc', $short);
+        }
+    }
+}
+
 /** Returns the combined API key string (keystring:secret or keystring alone). */
 function etsy_sync_get_api_key(): string {
     $ks  = get_option('etsy_sync_keystring', '');
@@ -1121,6 +1146,7 @@ function etsy_sync_products(bool $update_existing = false): array {
                     if ($price_str) update_post_meta($post_id, '_produkt_preis', $price_str);
                     if ($etsy_url)  update_post_meta($post_id, '_etsy_url',      $etsy_url);
                     etsy_sync_set_product_term($post_id, $section_id, $sections);
+                    etsy_sync_auto_yoast_meta($post_id, $title, $desc);
                     $result['updated']++;
                 }
                 if (!get_post_thumbnail_id($post_id)) {
@@ -1138,6 +1164,7 @@ function etsy_sync_products(bool $update_existing = false): array {
                 if ($price_str) update_post_meta($post_id, '_produkt_preis', $price_str);
                 if ($etsy_url)  update_post_meta($post_id, '_etsy_url',      $etsy_url);
                 etsy_sync_set_product_term($post_id, $section_id, $sections);
+                etsy_sync_auto_yoast_meta($post_id, $title, $desc);
                 $mc = etsy_sync_import_listing_media($post_id, $listing, false);
                 $result['images_ok']  += $mc['images_ok'];
                 $result['images_err'] += $mc['images_err'];
@@ -1275,6 +1302,7 @@ add_action('wp_ajax_etsy_sync_products_batch', function (): void {
                 if ($price_str) update_post_meta($post_id, '_produkt_preis', $price_str);
                 if ($etsy_url)  update_post_meta($post_id, '_etsy_url',      $etsy_url);
                 etsy_sync_set_product_term($post_id, $section_id, $sections);
+                etsy_sync_auto_yoast_meta($post_id, $title, $desc);
                 $updated++;
             }
         } else {
@@ -1286,6 +1314,7 @@ add_action('wp_ajax_etsy_sync_products_batch', function (): void {
                 if ($price_str) update_post_meta($post_id, '_produkt_preis', $price_str);
                 if ($etsy_url)  update_post_meta($post_id, '_etsy_url',      $etsy_url);
                 etsy_sync_set_product_term($post_id, $section_id, $sections);
+                etsy_sync_auto_yoast_meta($post_id, $title, $desc);
                 $new++;
             }
         }

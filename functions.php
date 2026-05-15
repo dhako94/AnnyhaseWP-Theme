@@ -556,12 +556,19 @@ endif; // !annyhase_seo_plugin_active()
 
 /* -------------------------------------------------------
    SEO: Schema.org JSON-LD (Organization, WebSite, Product, BreadcrumbList)
-   Suppressed when a dedicated SEO plugin is active to avoid
-   duplicate schemas alongside Yoast / Rank Math output.
+   When an SEO plugin (Yoast/RankMath/AIOSEO) is active, Organization and
+   WebSite schemas are suppressed to avoid duplication. Product and
+   BreadcrumbList are always emitted on single product pages because Yoast
+   Free does not output Product schema for custom post types.
 ------------------------------------------------------- */
-if (!annyhase_seo_plugin_active()):
 add_action('wp_head', function (): void {
     global $post;
+
+    $seo_plugin = annyhase_seo_plugin_active();
+
+    // When an SEO plugin handles the global graph, only product pages need
+    // supplemental schemas (Product + BreadcrumbList). Skip all other pages.
+    if ($seo_plugin && !is_singular('produkt')) return;
 
     $site_name = get_bloginfo('name');
     $site_url  = home_url('/');
@@ -571,36 +578,38 @@ add_action('wp_head', function (): void {
 
     $schemas = [];
 
-    $local_biz = [
-        '@type'        => 'Organization',
-        '@id'          => $site_url . '#organization',
-        'name'         => $site_name,
-        'url'          => $site_url,
-        'description'  => $site_desc,
-        'sameAs'       => array_values(array_filter([$etsy_url, $instagram])),
-        'contactPoint' => [
-            '@type'             => 'ContactPoint',
-            'contactType'       => 'customer service',
-            'availableLanguage' => 'German',
-        ],
-    ];
-    $schemas[] = $local_biz;
-
-    $schemas[] = [
-        '@type'           => 'WebSite',
-        '@id'             => $site_url . '#website',
-        'url'             => $site_url,
-        'name'            => $site_name,
-        'publisher'       => ['@id' => $site_url . '#organization'],
-        'potentialAction' => [
-            '@type'       => 'SearchAction',
-            'target'      => [
-                '@type'       => 'EntryPoint',
-                'urlTemplate' => $site_url . 'produkte/?ps={search_term_string}',
+    if (!$seo_plugin) {
+        $local_biz = [
+            '@type'        => 'Organization',
+            '@id'          => $site_url . '#organization',
+            'name'         => $site_name,
+            'url'          => $site_url,
+            'description'  => $site_desc,
+            'sameAs'       => array_values(array_filter([$etsy_url, $instagram])),
+            'contactPoint' => [
+                '@type'             => 'ContactPoint',
+                'contactType'       => 'customer service',
+                'availableLanguage' => 'German',
             ],
-            'query-input' => 'required name=search_term_string',
-        ],
-    ];
+        ];
+        $schemas[] = $local_biz;
+
+        $schemas[] = [
+            '@type'           => 'WebSite',
+            '@id'             => $site_url . '#website',
+            'url'             => $site_url,
+            'name'            => $site_name,
+            'publisher'       => ['@id' => $site_url . '#organization'],
+            'potentialAction' => [
+                '@type'       => 'SearchAction',
+                'target'      => [
+                    '@type'       => 'EntryPoint',
+                    'urlTemplate' => $site_url . 'produkte/?ps={search_term_string}',
+                ],
+                'query-input' => 'required name=search_term_string',
+            ],
+        ];
+    }
 
     if (is_singular('produkt') && $post) {
         $price_raw  = get_post_meta($post->ID, '_produkt_preis', true);
@@ -653,7 +662,7 @@ add_action('wp_head', function (): void {
         $schemas[] = $product;
     }
 
-    if (is_post_type_archive('produkt')) {
+    if (!$seo_plugin && is_post_type_archive('produkt')) {
         $schemas[] = [
             '@type'           => 'BreadcrumbList',
             'itemListElement' => [
@@ -663,6 +672,8 @@ add_action('wp_head', function (): void {
         ];
     }
 
+    if (empty($schemas)) return;
+
     echo '<script type="application/ld+json">' . "\n";
     echo wp_json_encode(
         ['@context' => 'https://schema.org', '@graph' => $schemas],
@@ -670,7 +681,6 @@ add_action('wp_head', function (): void {
     );
     echo "\n</script>\n";
 }, 10);
-endif; // !annyhase_seo_plugin_active()
 
 /* -------------------------------------------------------
    SEO: rel="prev" / rel="next" for archive pages
