@@ -100,7 +100,7 @@ p:last-child { margin-bottom: 0; }
   padding-inline: 1.5rem;
 }
 
-.section { padding-block: var(--section-gap); }
+.section { padding-top: var(--section-gap); padding-bottom: var(--section-gap); }
 .section--alt { background-color: var(--color-bg-alt); }
 .section--cream { background-color: var(--color-cream); }
 .section--no-bottom { padding-bottom: 0; }

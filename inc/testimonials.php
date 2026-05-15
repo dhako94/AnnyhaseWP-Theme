@@ -51,7 +51,7 @@ if (!$card_count) return;
 $uid = 'ts-' . substr(md5(uniqid('', true)), 0, 6);
 ?>
 
-<section class="section section--alt" style="padding-bottom:0">
+<section class="section section--alt section--no-bottom">
     <div class="container">
         <div class="section-header centered reveal">
             <span class="section-label"><?php echo esc_html(get_theme_mod('annyhase_reviews_label', 'Kundenstimmen')); ?></span>
