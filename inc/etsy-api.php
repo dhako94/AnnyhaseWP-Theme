@@ -63,12 +63,19 @@ function etsy_sync_derive_clean_title(array $tags, int $post_id = 0): string {
 
     // When a category with a configured prefix is found, never auto-prepend anything.
     // Only fall back to ceramics detection when no category config exists at all.
-    $use_auto_pfx = true;
+    $use_auto_pfx  = true;
+    $cat_blacklist = [];
     if ($post_id > 0 && function_exists('annyhase_get_category_seo_config')) {
         $terms = get_the_terms($post_id, 'produktkategorie');
         $term  = ($terms && !is_wp_error($terms)) ? $terms[0] : null;
         if ($term) {
             $use_auto_pfx = false;
+            $cfg_bl       = annyhase_get_category_seo_config($term->term_id);
+            if (!empty($cfg_bl['blacklist'])) {
+                $cat_blacklist = array_values(array_filter(array_map(
+                    'mb_strtolower', array_map('trim', explode(',', $cfg_bl['blacklist']))
+                )));
+            }
         }
     }
 
@@ -76,6 +83,7 @@ function etsy_sync_derive_clean_title(array $tags, int $post_id = 0): string {
         $tag = trim((string) $tag);
         if (mb_strlen($tag) < 3) continue;
         if (in_array(mb_strtolower($tag), $adjectives, true)) continue;
+        if ($cat_blacklist && in_array(mb_strtolower($tag), $cat_blacklist, true)) continue;
         if (preg_match($occasion_re, $tag)) continue;
 
         $clean = ucfirst($tag);
@@ -194,20 +202,6 @@ function etsy_sync_filter_description(string $desc): string {
         return $desc;
     }
 
-    // Built-in §19 UStG patterns
-    $patterns = [
-        '/[\*\s]*gem[äa][ß]?\s*§\s*19\s*Ust[Gg][^.]*\.[^.]*\./ui',
-        '/[\*\s]*gem[äa][ß]?\s*§\s*19\s*Ust[Gg][^\n]*/ui',
-        '/[\*\s]*Gemäß §\s*19[^\n]*/ui',
-        '/[\*\s]*Kleinunternehmer[^\n]*/ui',
-        '/[\*\s]*Es wird keine Mehrwertsteuer[^\n]*/ui',
-        '/[\*\s]*kein Ausweis von Mehrwertsteuer[^\n]*/ui',
-        '/[\*\s]*keine Umsatzsteuer[^\n]*/ui',
-    ];
-    foreach ($patterns as $pattern) {
-        $desc = (string) preg_replace($pattern, '', $desc);
-    }
-
     // Custom substring entries: remove any line containing the phrase
     $custom_raw = (string) get_option('annyhase_desc_filter_custom', '');
     if ($custom_raw) {
@@ -255,7 +249,8 @@ function etsy_sync_build_seo_intro(int $post_id, array $listing): string {
         $tags   = $stored ? array_values(array_filter(array_map('trim', explode(',', $stored)))) : [];
     }
 
-    $clean = etsy_sync_derive_clean_title($tags, $post_id);
+    $override = trim((string) get_post_meta($post_id, '_annyhase_clean_title_override', true));
+    $clean    = $override ?: etsy_sync_derive_clean_title($tags, $post_id);
     if (!$clean) return '';
 
     $is_pers    = !empty($listing['is_personalizable']);
@@ -1207,7 +1202,8 @@ function etsy_sync_auto_yoast_meta(int $post_id, array $listing = []): void {
         $tags   = $stored ? array_values(array_filter(array_map('trim', explode(',', $stored)))) : [];
     }
 
-    $clean_title = etsy_sync_derive_clean_title($tags, $post_id);
+    $override    = trim((string) get_post_meta($post_id, '_annyhase_clean_title_override', true));
+    $clean_title = $override ?: etsy_sync_derive_clean_title($tags, $post_id);
 
     // Load per-category config (prefix, suffix, focuskw_addon, pers_sfx)
     $cfg = [];

@@ -1425,8 +1425,9 @@ function annyhase_get_gallery_ids(int $post_id = 0): array {
 
 function annyhase_produkt_details_cb(WP_Post $post): void {
     wp_nonce_field('annyhase_produkt_meta', 'annyhase_meta_nonce');
-    $price     = get_post_meta($post->ID, '_produkt_preis',      true);
-    $etsy_url  = get_post_meta($post->ID, '_etsy_url',           true);
+    $price       = get_post_meta($post->ID, '_produkt_preis',                    true);
+    $ct_override = (string) get_post_meta($post->ID, '_annyhase_clean_title_override', true);
+    $etsy_url    = get_post_meta($post->ID, '_etsy_url',                         true);
     $is_etsy   = get_post_meta($post->ID, '_is_etsy_produkt',    true);
     $badge     = get_post_meta($post->ID, '_produkt_badge',      true);
     $highlight = get_post_meta($post->ID, '_produkt_highlight',  true);
@@ -1460,6 +1461,20 @@ function annyhase_produkt_details_cb(WP_Post $post): void {
             </label>
         </div>
     </div>
+
+    <div style="margin-top:12px;padding:10px 14px;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px">
+        <label for="an_clean_title_override" style="display:block;font-size:11px;font-weight:700;color:#c2410c;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">
+            SEO Produktname (manuell)
+        </label>
+        <input type="text" id="an_clean_title_override" name="an_clean_title_override"
+               value="<?php echo esc_attr($ct_override); ?>"
+               placeholder="leer = automatisch aus Etsy-Tags ableiten"
+               style="width:100%;font-size:13px">
+        <p style="font-size:11px;color:#888;margin:5px 0 0">
+            Überschreibt beim Sync den auto-abgeleiteten Produktnamen — wird für Yoast-Titel, Focus-KW und SEO-Intro verwendet. Leer lassen für automatische Ableitung aus den Etsy-Tags.
+        </p>
+    </div>
+
     <?php
     // Read-only display of Etsy tags synced from Etsy (not user-editable).
     $etsy_tags = (string) get_post_meta($post->ID, '_etsy_tags', true);
@@ -1574,8 +1589,9 @@ function annyhase_save_produkt_meta(int $post_id): void {
     update_post_meta($post_id, '_produkt_preis',     sanitize_text_field($_POST['produkt_preis'] ?? ''));
     update_post_meta($post_id, '_etsy_url',          esc_url_raw($_POST['etsy_url'] ?? ''));
     update_post_meta($post_id, '_is_etsy_produkt',   isset($_POST['is_etsy_produkt'])  ? '1' : '0');
-    update_post_meta($post_id, '_produkt_badge',     sanitize_text_field($_POST['produkt_badge'] ?? ''));
-    update_post_meta($post_id, '_produkt_highlight', isset($_POST['produkt_highlight']) ? '1' : '0');
+    update_post_meta($post_id, '_produkt_badge',                sanitize_text_field($_POST['produkt_badge'] ?? ''));
+    update_post_meta($post_id, '_produkt_highlight',           isset($_POST['produkt_highlight']) ? '1' : '0');
+    update_post_meta($post_id, '_annyhase_clean_title_override', sanitize_text_field($_POST['an_clean_title_override'] ?? ''));
 }
 add_action('save_post_produkt', 'annyhase_save_produkt_meta');
 

@@ -31,6 +31,7 @@ function annyhase_seo_term_meta_keys(): array {
         '_annyhase_focuskw_addon'      => 'sanitize_text_field',
         '_annyhase_personalizable_sfx' => 'sanitize_text_field',
         '_annyhase_intro_template'     => 'sanitize_textarea_field',
+        '_annyhase_title_blacklist'    => 'sanitize_text_field',
     ];
 }
 
@@ -110,6 +111,15 @@ add_action('produktkategorie_edit_form_fields', function (WP_Term $term): void {
             </p>
         </td>
     </tr>
+    <tr class="form-field">
+        <th scope="row"><label for="an_title_blacklist">Titel-Sperrliste</label></th>
+        <td>
+            <input type="text" id="an_title_blacklist" name="an_title_blacklist"
+                   value="<?php echo esc_attr($v('_annyhase_title_blacklist')); ?>" class="large-text"
+                   placeholder="z.B. taufe, ostern, weihnachten">
+            <p class="description">Komma-getrennte Wörter die beim Ableiten des Produktnamens aus Etsy-Tags übersprungen werden. Groß-/Kleinschreibung egal.</p>
+        </td>
+    </tr>
     <?php
 });
 
@@ -126,6 +136,7 @@ add_action('produktkategorie_add_form_fields', function (): void {
         ['an_focuskw_addon',     'Focus-KW Zusatz',           'text',     'handgetöpfert',                   'Ergänzung zur Focus-Keyphrase (z.B. "handgetöpfert").'],
         ['an_seo_desc',          'Meta-Desc. Suffix',         'textarea', '',                                'Ans Ende der Meta-Description angehängt.'],
         ['an_intro_template',    'SEO-Intro-Template',        'textarea', '',                                'Einleitungssatz; {noun} = Produktname mit Prefix/Suffix.'],
+        ['an_title_blacklist',   'Titel-Sperrliste',          'text',     'taufe, ostern, weihnachten',          'Komma-getrennte Tags die beim Ableiten des Produktnamens übersprungen werden.'],
     ];
     foreach ($fields as [$id, $label, $type, $placeholder, $desc]):
         ?>
@@ -160,6 +171,7 @@ function annyhase_save_seo_term_meta(int $term_id): void {
         'an_focuskw_addon'      => ['_annyhase_focuskw_addon',      'sanitize_text_field'],
         'an_personalizable_sfx' => ['_annyhase_personalizable_sfx', 'sanitize_text_field'],
         'an_intro_template'     => ['_annyhase_intro_template',     'sanitize_textarea_field'],
+        'an_title_blacklist'    => ['_annyhase_title_blacklist',    'sanitize_text_field'],
     ];
     foreach ($map as $post_key => [$meta_key, $sanitizer]) {
         if (isset($_POST[$post_key])) {
@@ -214,6 +226,7 @@ function annyhase_get_category_seo_config(int $term_id): array {
         'intro_template'  => '_annyhase_intro_template',
         'meta_desc_sfx'   => '_annyhase_seo_desc',
         'seo_kw'          => '_annyhase_seo_kw',
+        'blacklist'       => '_annyhase_title_blacklist',
     ];
     $result = [];
     foreach ($keys as $alias => $meta_key) {

@@ -37,18 +37,22 @@ add_action('wp_ajax_annyhase_apply_yoast_config', function (): void {
         wp_send_json_error(['msg' => 'Yoast SEO ist nicht aktiv.']);
     }
 
-    $opt = get_option('wpseo_titles', []);
+    $titles = get_option('wpseo_titles', []);
+    $titles['title-produkt']                 = '%%short_title%% – %%produkt_kat%% | %%sitename%%';
+    $titles['metadesc-produkt']              = '';
+    $titles['title-tax-produktkategorie']    = '%%term_title%% – Handgemacht | %%sitename%%';
+    $titles['metadesc-tax-produktkategorie'] = '%%term_description%%';
+    $titles['noindex-author-wpseo']          = '1';
+    $titles['noindex-date-wpseo']            = '1';
+    $titles['breadcrumbs-enable']            = '1';
+    update_option('wpseo_titles', $titles);
 
-    // Produkt: title uses our custom variables; meta desc is set per-product via sync.
-    $opt['title-produkt']                 = '%%short_title%% – %%produkt_kat%% | %%sitename%%';
-    $opt['metadesc-produkt']              = '';
+    $main = get_option('wpseo', []);
+    $main['opengraph'] = '1';
+    $main['twitter']   = '1';
+    update_option('wpseo', $main);
 
-    // Produktkategorie archive templates.
-    $opt['title-tax-produktkategorie']    = '%%term_title%% – Handgetöpferte Keramik | %%sitename%%';
-    $opt['metadesc-tax-produktkategorie'] = '%%term_description%%';
-
-    update_option('wpseo_titles', $opt);
-    wp_send_json_success(['msg' => 'Yoast-Templates wurden aktualisiert.']);
+    wp_send_json_success(['msg' => 'Alle Yoast-Einstellungen wurden konfiguriert.']);
 });
 
 /* =================================================================
@@ -87,6 +91,7 @@ add_action('admin_post_annyhase_save_seo_categories', function (): void {
         'fkw_addon_'     => ['_annyhase_focuskw_addon',      'sanitize_text_field'],
         'pers_sfx_'      => ['_annyhase_personalizable_sfx', 'sanitize_text_field'],
         'intro_tpl_'     => ['_annyhase_intro_template',     'sanitize_textarea_field'],
+        'blacklist_'     => ['_annyhase_title_blacklist',    'sanitize_text_field'],
     ];
 
     $terms = get_terms(['taxonomy' => 'produktkategorie', 'hide_empty' => false]);
@@ -156,14 +161,22 @@ function annyhase_seo_hub_tab_yoast(): void {
     $yoast_active = defined('WPSEO_VERSION');
     $opt          = get_option('wpseo_titles', []);
 
+    $opt_main = get_option('wpseo', []);
+
+    // [label, opt-group ('titles'|'main'), option key, raw recommended, human display (null = show as code)]
     $rows = [
-        ['Produkt – Titel',       'title-produkt',                 '%%short_title%% – %%produkt_kat%% | %%sitename%%'],
-        ['Produkt – Meta Desc',   'metadesc-produkt',              '(leer — wird per Sync pro Produkt gesetzt)'],
-        ['Kategorie – Titel',     'title-tax-produktkategorie',    '%%term_title%% – Handgetöpferte Keramik | %%sitename%%'],
-        ['Kategorie – Meta Desc', 'metadesc-tax-produktkategorie', '%%term_description%%'],
+        ['Produkt – Titel',            'titles', 'title-produkt',                 '%%short_title%% – %%produkt_kat%% | %%sitename%%',  null],
+        ['Produkt – Meta Desc',        'titles', 'metadesc-produkt',              '',                                                   null],
+        ['Kategorie – Titel',          'titles', 'title-tax-produktkategorie',    '%%term_title%% – Handgemacht | %%sitename%%',         null],
+        ['Kategorie – Meta Desc',      'titles', 'metadesc-tax-produktkategorie', '%%term_description%%',                                null],
+        ['Autor-Archive deaktivieren', 'titles', 'noindex-author-wpseo',          '1',                                                  'Aktiviert'],
+        ['Datum-Archive deaktivieren', 'titles', 'noindex-date-wpseo',            '1',                                                  'Aktiviert'],
+        ['Breadcrumbs aktivieren',     'titles', 'breadcrumbs-enable',            '1',                                                  'Aktiviert'],
+        ['Open Graph Tags (FB / OG)',  'main',   'opengraph',                     '1',                                                  'Aktiviert'],
+        ['Twitter/X Cards',            'main',   'twitter',                       '1',                                                  'Aktiviert'],
     ];
     ?>
-    <div style="max-width:900px">
+    <div style="max-width:960px">
 
     <?php if (!$yoast_active): ?>
     <div class="notice notice-warning inline"><p>
@@ -174,29 +187,49 @@ function annyhase_seo_hub_tab_yoast(): void {
 
     <!-- Current vs. recommended table -->
     <div style="background:#fff;border:1px solid #e2e4e7;border-radius:8px;padding:1.25rem;margin-bottom:1.25rem">
-        <h3 style="margin-top:0;font-size:.95rem">Aktuelle vs. empfohlene Templates</h3>
+        <h3 style="margin-top:0;font-size:.95rem">Aktuelle vs. empfohlene Einstellungen</h3>
         <table class="widefat striped" style="font-size:.85rem">
             <thead>
                 <tr>
-                    <th style="width:200px">Bereich</th>
+                    <th style="width:230px">Einstellung</th>
                     <th>Aktuell in Yoast</th>
-                    <th>Empfohlen</th>
+                    <th style="width:320px">Empfohlen</th>
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($rows as [$label, $key, $recommended]):
-                    $current = $opt[$key] ?? '(nicht gesetzt)';
-                    $match   = $current === $recommended || ($recommended === '(leer — wird per Sync pro Produkt gesetzt)' && !$current);
+                <?php foreach ($rows as [$label, $opt_grp, $key, $recommended, $rec_display]):
+                    $opt_data = ($opt_grp === 'main') ? $opt_main : $opt;
+                    $current  = $opt_data[$key] ?? null;
+                    $is_bool  = ($rec_display !== null);
+                    if ($is_bool) {
+                        $match        = ($current === '1' || $current === true || $current === 1);
+                        $show_current = $match ? 'Aktiviert' : 'Deaktiviert';
+                    } elseif ($recommended === '') {
+                        $match        = ($current === '' || $current === null || $current === false);
+                        $show_current = ($current === null || $current === '') ? '(leer)' : $current;
+                    } else {
+                        $match        = ($current === $recommended);
+                        $show_current = ($current === null) ? '(nicht gesetzt)' : ($current ?: '(leer)');
+                    }
+                    $show_rec = $rec_display ?? ($recommended === '' ? '(leer)' : $recommended);
                 ?>
                 <tr>
                     <td><?php echo esc_html($label); ?></td>
                     <td>
-                        <code><?php echo esc_html($current ?: '(leer)'); ?></code>
-                        <?php if ($match): ?>
-                        <span style="color:#22c55e;margin-left:.3rem">✓</span>
+                        <?php if ($is_bool): ?>
+                        <span style="color:<?php echo $match ? '#22c55e' : '#ef4444'; ?>;font-weight:600"><?php echo esc_html($show_current); ?></span>
+                        <?php else: ?>
+                        <code style="word-break:break-all;font-size:.8rem"><?php echo esc_html($show_current); ?></code>
+                        <?php endif; ?>
+                        <?php if ($match): ?><span style="color:#22c55e;margin-left:.3rem">✓</span><?php endif; ?>
+                    </td>
+                    <td>
+                        <?php if ($is_bool): ?>
+                        <strong style="color:#2e7d32"><?php echo esc_html($show_rec); ?></strong>
+                        <?php else: ?>
+                        <code style="font-size:.8rem"><?php echo esc_html($show_rec); ?></code>
                         <?php endif; ?>
                     </td>
-                    <td><code><?php echo esc_html($recommended); ?></code></td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -207,10 +240,13 @@ function annyhase_seo_hub_tab_yoast(): void {
     <div style="background:#f0f6fc;border:1px solid #b8d4ea;border-radius:8px;padding:1.25rem;margin-bottom:1.25rem">
         <h3 style="margin-top:0;font-size:.95rem">Was wird konfiguriert?</h3>
         <ul style="margin:0;padding-left:1.4rem;line-height:1.85;color:#444;font-size:.88rem">
-            <li><strong>%%short_title%%</strong> – Produkttitel auf ~40 Zeichen gekürzt (custom variable, bereits registriert).</li>
-            <li><strong>%%produkt_kat%%</strong> – Name der ersten Produktkategorie (custom variable, bereits registriert).</li>
-            <li>Produkt-Meta-Description wird leer gelassen — der Etsy-Sync setzt pro Produkt automatisch einen individuellen Wert.</li>
-            <li>Kategorie-Archive nutzen das native WordPress "Beschreibung"-Feld via <code>%%term_description%%</code>.</li>
+            <li><strong>%%short_title%%</strong> – Produkttitel auf ~40 Zeichen gekürzt (custom Yoast-Variable, bereits registriert).</li>
+            <li><strong>%%produkt_kat%%</strong> – Name der ersten Produktkategorie (custom Yoast-Variable, bereits registriert).</li>
+            <li>Produkt-Meta-Description wird leer gelassen — der Etsy-Sync setzt pro Produkt automatisch einen individuellen Text.</li>
+            <li>Kategorie-Archive nutzen das WordPress-"Beschreibung"-Feld via <code>%%term_description%%</code>.</li>
+            <li>Autor- und Datum-Archive werden auf <strong>noindex</strong> gesetzt — sie erzeugen duplicate content und haben keinen SEO-Nutzen.</li>
+            <li><strong>Breadcrumbs</strong> aktivieren — verbessert Seitenstruktur-Anzeige in Google-Suchergebnissen.</li>
+            <li><strong>Open Graph + Twitter/X Cards</strong> aktivieren — ermöglicht Vorschaubilder beim Teilen in sozialen Netzwerken.</li>
         </ul>
     </div>
 
@@ -260,21 +296,12 @@ function annyhase_seo_hub_tab_yoast(): void {
     <?php
     $filter_on     = get_option('annyhase_desc_filter_enabled', '1') !== '0';
     $filter_custom = (string) get_option('annyhase_desc_filter_custom', '');
-    $builtin = [
-        'gem. §19 UStG …',
-        'Gemäß §19 …',
-        'Kleinunternehmer …',
-        'Es wird keine Mehrwertsteuer …',
-        'kein Ausweis von Mehrwertsteuer …',
-        'keine Umsatzsteuer …',
-    ];
     ?>
     <div style="background:#fff;border:1px solid #e2e4e7;border-radius:8px;padding:1.25rem;margin-top:1.25rem">
-        <h3 style="margin-top:0;font-size:.95rem;font-weight:700">Beschreibungs-Filter (§19 UStG &amp; Boilerplate)</h3>
+        <h3 style="margin-top:0;font-size:.95rem;font-weight:700">Beschreibungs-Filter</h3>
         <p style="font-size:.85rem;color:#555;margin-bottom:1rem">
-            Entfernt automatisch rechtliche Pflichthinweise und Boilerplate aus importierten Etsy-Beschreibungen,
-            bevor der Text auf der Website gespeichert wird.
-            Eigene Texte werden als einfache Substring-Suche (kein Regex) angewendet.
+            Entfernt Textzeilen aus importierten Etsy-Beschreibungen bevor sie gespeichert werden.
+            Jede Zeile wird als exakter Textblock (Substring) gesucht — Groß-/Kleinschreibung egal.
         </p>
         <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
             <?php wp_nonce_field('annyhase_save_sync_settings'); ?>
@@ -286,25 +313,16 @@ function annyhase_seo_hub_tab_yoast(): void {
                 <span style="color:#888;font-size:.82rem">(deaktivieren um Rohtexte von Etsy unverändert zu übernehmen)</span>
             </label>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
-                <div>
-                    <p style="font-size:.83rem;font-weight:600;margin:0 0 .4rem">Eingebaute Muster (immer aktiv wenn Filter an):</p>
-                    <ul style="margin:0;padding-left:1.2rem;font-size:.82rem;color:#555;line-height:1.9">
-                        <?php foreach ($builtin as $b): ?>
-                        <li><code><?php echo esc_html($b); ?></code></li>
-                        <?php endforeach; ?>
-                    </ul>
-                </div>
-                <div>
-                    <label for="desc_filter_custom" style="display:block;font-size:.83rem;font-weight:600;margin-bottom:.25rem">
-                        Eigene Filter-Texte (einer pro Zeile):
-                    </label>
-                    <textarea id="desc_filter_custom" name="desc_filter_custom"
-                              rows="7" style="width:100%;resize:vertical;font-family:monospace;font-size:.82rem"><?php echo esc_textarea($filter_custom); ?></textarea>
-                    <p style="font-size:.72rem;color:#888;margin:.25rem 0 0">
-                        Jede Zeile wird als exakter Textblock gesucht und entfernt. Groß-/Kleinschreibung wird ignoriert.
-                    </p>
-                </div>
+            <div style="margin-bottom:1rem">
+                <label for="desc_filter_custom" style="display:block;font-size:.83rem;font-weight:600;margin-bottom:.25rem">
+                    Filter-Texte (einer pro Zeile):
+                </label>
+                <textarea id="desc_filter_custom" name="desc_filter_custom"
+                          rows="8" wrap="off"
+                          style="width:100%;resize:vertical;font-family:monospace;font-size:.82rem;overflow-x:auto"><?php echo esc_textarea($filter_custom); ?></textarea>
+                <p style="font-size:.72rem;color:#888;margin:.25rem 0 0">
+                    Jede Zeile ist ein eigenes Muster. Horizontales Scrollen zeigt ob es sich um einen langen Satz oder mehrere kurze Zeilen handelt.
+                </p>
             </div>
 
             <?php submit_button('Filter-Einstellungen speichern', 'secondary', 'submit', false,
@@ -331,7 +349,7 @@ function annyhase_seo_hub_tab_categories(): void {
     $site_name = get_bloginfo('name');
     $site_host = (string) parse_url(home_url(), PHP_URL_HOST);
     ?>
-    <div style="display:grid;grid-template-columns:minmax(0,1fr) 305px;gap:1.5rem;align-items:start;max-width:1300px">
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:1.5rem;align-items:start;max-width:1400px">
     <div><!-- left: form column -->
 
     <p style="color:#555;margin-bottom:1.5rem;font-size:.9rem">
@@ -352,6 +370,7 @@ function annyhase_seo_hub_tab_categories(): void {
             $fkw_add  = (string) get_term_meta($tid, '_annyhase_focuskw_addon',      true);
             $pers_sfx = (string) get_term_meta($tid, '_annyhase_personalizable_sfx', true);
             $intro    = (string) get_term_meta($tid, '_annyhase_intro_template',     true);
+            $bl_list  = (string) get_term_meta($tid, '_annyhase_title_blacklist',    true);
 
             // Fetch a real product from this category for the legend examples.
             // Prefer one that already has a _annyhase_clean_title (set by sync).
@@ -469,6 +488,20 @@ function annyhase_seo_hub_tab_categories(): void {
                 <p style="font-size:.72rem;color:#888;margin:.2rem 0 0">
                     Einleitungssatz vor der Etsy-Beschreibung. <code>{noun}</code> = Prefix + Produktname + Suffix.
                     Beispiel: <em>{noun} – handgetöpfert und ein echtes Unikat aus unserer Werkstatt im Schwabenland.</em>
+                </p>
+            </div>
+
+            <!-- Row 4: Titel-Sperrliste -->
+            <div style="margin-bottom:1rem">
+                <label style="display:block;font-size:.83rem;font-weight:600;margin-bottom:.2rem"
+                       for="bl_<?php echo esc_attr($tid); ?>">Titel-Sperrliste</label>
+                <input type="text" id="bl_<?php echo esc_attr($tid); ?>"
+                       name="blacklist_<?php echo esc_attr($tid); ?>"
+                       value="<?php echo esc_attr($bl_list); ?>"
+                       placeholder="z.B. taufe, ostern, weihnachten"
+                       class="large-text" style="width:100%">
+                <p style="font-size:.72rem;color:#888;margin:.2rem 0 0">
+                    Komma-getrennte Wörter die beim Ableiten des Produktnamens aus Etsy-Tags übersprungen werden. Groß-/Kleinschreibung egal.
                 </p>
             </div>
 
@@ -598,7 +631,7 @@ function annyhase_seo_hub_tab_categories(): void {
     </div><!-- /form column -->
 
     <!-- Right: sticky legend card -->
-    <div style="position:sticky;top:52px">
+    <div style="position:sticky;top:52px;max-height:calc(100vh - 80px);overflow-y:auto">
         <div style="background:#fff;border:1px solid #e2e4e7;border-radius:8px;padding:1.1rem 1.2rem;font-size:.8rem">
 
             <h3 style="margin:0 0 .6rem;font-size:.88rem;font-weight:700;color:#1d2327;padding-bottom:.5rem;border-bottom:1px solid #f0f0f0">
