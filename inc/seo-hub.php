@@ -352,11 +352,36 @@ function annyhase_seo_hub_tab_categories(): void {
             $fkw_add  = (string) get_term_meta($tid, '_annyhase_focuskw_addon',      true);
             $pers_sfx = (string) get_term_meta($tid, '_annyhase_personalizable_sfx', true);
             $intro    = (string) get_term_meta($tid, '_annyhase_intro_template',     true);
+
+            // Fetch a real product from this category for the legend examples.
+            // Prefer one that already has a _annyhase_clean_title (set by sync).
+            $_ex = get_posts([
+                'post_type' => 'produkt', 'posts_per_page' => 1, 'post_status' => 'publish',
+                'no_found_rows' => true,
+                'tax_query'  => [['taxonomy' => 'produktkategorie', 'field' => 'term_id', 'terms' => $tid]],
+                'meta_query' => [['key' => '_annyhase_clean_title', 'compare' => 'EXISTS']],
+            ]);
+            if (empty($_ex)) {
+                $_ex = get_posts([
+                    'post_type' => 'produkt', 'posts_per_page' => 1, 'post_status' => 'publish',
+                    'no_found_rows' => true,
+                    'tax_query' => [['taxonomy' => 'produktkategorie', 'field' => 'term_id', 'terms' => $tid]],
+                ]);
+            }
+            $ex_product_noun  = $_ex ? (string) get_post_meta($_ex[0]->ID, '_annyhase_clean_title', true) : '';
+            $ex_product_title = $_ex ? get_the_title($_ex[0]->ID) : '';
+            // Fall back to shortened post title or category name when no clean title exists yet.
+            if (!$ex_product_noun && $ex_product_title) {
+                $ex_product_noun = implode(' ', array_slice(explode(' ', $ex_product_title), 0, 3));
+            }
+            if (!$ex_product_noun) $ex_product_noun = $term->name;
         ?>
         <div class="seo-cat-card"
              data-site="<?php echo esc_attr($site_name); ?>"
              data-cat="<?php echo esc_attr($term->name); ?>"
-             style="background:#fff;border:1px solid #e2e4e7;border-radius:8px;padding:1.25rem;margin-bottom:1.5rem">
+             data-ex-noun="<?php echo esc_attr($ex_product_noun); ?>"
+             data-ex-title="<?php echo esc_attr($ex_product_title); ?>"
+             style="background:#fff;border:1px solid #e2e4e7;border-radius:8px;padding:1.25rem;margin-bottom:1.5rem;transition:border-color .15s">
 
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
                 <h3 style="margin:0;font-size:1rem;font-weight:700">
@@ -439,7 +464,7 @@ function annyhase_seo_hub_tab_categories(): void {
                        for="intro_<?php echo esc_attr($tid); ?>">SEO Intro-Template</label>
                 <textarea id="intro_<?php echo esc_attr($tid); ?>"
                           name="intro_tpl_<?php echo esc_attr($tid); ?>"
-                          rows="2" class="large-text"
+                          rows="2" class="large-text an-intro-tpl"
                           style="width:100%;resize:vertical"><?php echo esc_textarea($intro); ?></textarea>
                 <p style="font-size:.72rem;color:#888;margin:.2rem 0 0">
                     Einleitungssatz vor der Etsy-Beschreibung. <code>{noun}</code> = Prefix + Produktname + Suffix.
@@ -452,16 +477,16 @@ function annyhase_seo_hub_tab_categories(): void {
                 <div style="font-size:.68rem;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem">SERP-Vorschau</div>
                 <div class="serp-title" style="color:#1a0dab;font-size:.95rem;line-height:1.3;margin-bottom:.15rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:580px">
                     <?php
-                    $ex_noun = trim(implode(' ', array_filter([$prefix, $term->name, $suffix])));
-                    echo esc_html($ex_noun) . ' – ' . esc_html($term->name) . ' | ' . esc_html($site_name);
+                    $serp_noun = trim(implode(' ', array_filter([$prefix, $ex_product_noun, $suffix])));
+                    echo esc_html($serp_noun) . ' – ' . esc_html($term->name) . ' | ' . esc_html($site_name);
                     ?>
                 </div>
                 <div style="color:#006621;font-size:.78rem;margin-bottom:.25rem">
-                    <?php echo esc_html($site_host); ?>/produkte/<?php echo esc_html(sanitize_title($term->name)); ?>/beispiel-produkt
+                    <?php echo esc_html($site_host); ?>/produkte/<?php echo esc_html(sanitize_title($term->name)); ?>/<?php echo esc_html(sanitize_title($ex_product_title ?: 'beispiel-produkt')); ?>
                 </div>
                 <div class="serp-desc" style="color:#545454;font-size:.83rem;line-height:1.5">
                     <?php
-                    echo esc_html($ex_noun);
+                    echo esc_html($serp_noun);
                     if ($desc_sfx) echo ' – ' . esc_html(mb_substr($desc_sfx, 0, 80));
                     echo '.';
                     ?>
@@ -477,104 +502,169 @@ function annyhase_seo_hub_tab_categories(): void {
 
     <script>
     (function(){
-        document.querySelectorAll('.seo-cat-card').forEach(function(card){
-            var pfxEl  = card.querySelector('.an-prefix');
-            var sfxEl  = card.querySelector('.an-suffix');
-            var descEl = card.querySelector('.an-desc-sfx');
-            var fkwEl  = card.querySelector('.an-fkw-add');
-            var title  = card.querySelector('.serp-title');
-            var desc   = card.querySelector('.serp-desc');
-            var site   = card.dataset.site || '';
-            var cat    = card.dataset.cat  || '';
+        var activeCard = null;
 
-            function refresh(){
-                var pfx   = pfxEl  ? pfxEl.value.trim()  : '';
-                var sfx   = sfxEl  ? sfxEl.value.trim()  : '';
-                var dsfx  = descEl ? descEl.value.trim()  : '';
-                var fkwA  = fkwEl  ? fkwEl.value.trim()   : '';
-                var parts = [pfx, cat, sfx].filter(Boolean);
-                var noun  = parts.join(' ');
-                if (title) title.textContent = noun + ' – ' + cat + ' | ' + site;
-                if (desc)  desc.textContent  = noun + (dsfx ? ' – ' + dsfx.substring(0, 80) : '') + '.';
-                // Update legend live example
-                var leg = document.getElementById('legend-example-noun');
-                var legFkw = document.getElementById('legend-example-fkw');
-                if (leg)    leg.textContent    = noun || '…';
-                if (legFkw) legFkw.textContent = [pfx, cat, fkwA].filter(Boolean).join(' ') || '…';
+        function txt(id, val) {
+            var el = document.getElementById(id);
+            if (el) el.textContent = val;
+        }
+
+        function activateCard(card) {
+            // Highlight active, reset others
+            document.querySelectorAll('.seo-cat-card').forEach(function(c) {
+                c.style.borderColor = (c === card) ? '#c4704a' : '#e2e4e7';
+            });
+            activeCard = card;
+
+            var pfx    = (card.querySelector('.an-prefix')    || {value:''}).value.trim();
+            var sfx    = (card.querySelector('.an-suffix')    || {value:''}).value.trim();
+            var fkwA   = (card.querySelector('.an-fkw-add')   || {value:''}).value.trim();
+            var dsfx   = (card.querySelector('.an-desc-sfx')  || {value:''}).value.trim();
+            var intrEl = card.querySelector('.an-intro-tpl');
+            var intrTpl = intrEl ? intrEl.value.trim() : '';
+            var persEl  = card.querySelector('[class*="regular-text"]:not(.an-prefix):not(.an-suffix):not(.an-fkw-add):not(.an-kw)');
+            // Fetch pers_sfx by name pattern
+            var persSfxEl = card.querySelector('[name^="pers_sfx_"]');
+            var persSfx   = persSfxEl ? persSfxEl.value.trim() : '';
+
+            var cat     = card.dataset.cat     || '';
+            var exNoun  = card.dataset.exNoun  || '';
+            var exTitle = card.dataset.exTitle || '';
+            var site    = card.dataset.site    || '';
+
+            // Build composed nouns
+            var nounFull  = [pfx, exNoun, sfx].filter(Boolean).join(' ');
+            var nounPers  = [pfx, exNoun, persSfx].filter(Boolean).join(' ') || nounFull;
+            var fkwFull   = [pfx, exNoun, fkwA].filter(Boolean).join(' ');
+            var introFull = intrTpl ? intrTpl.replace(/\{noun\}/g, nounFull || exNoun) : '';
+
+            // Context header
+            txt('leg-context-cat',     cat);
+            txt('leg-context-product', exTitle || exNoun || '–');
+
+            // Per-field examples
+            if (pfx) {
+                txt('leg-ex-prefix', '"' + pfx + '" + ' + (exNoun||'Produktname') + ' → ' + (pfx + ' ' + (exNoun||'Produktname')));
+            } else {
+                txt('leg-ex-prefix', '(leer) → Produktname erscheint ohne Prefix');
+            }
+            txt('leg-ex-suffix',  nounFull  || (exNoun || '–'));
+            txt('leg-ex-pers',    nounPers);
+            txt('leg-ex-fkw',     fkwFull   || exNoun || '–');
+            txt('leg-ex-meta',    (nounFull || exNoun) + (dsfx ? ' … ' + dsfx.substring(0, 55) + (dsfx.length > 55 ? '…' : '') : ''));
+
+            // SEO-Titel
+            txt('leg-seo-title', (nounFull || exNoun) + ' – ' + cat + ' | ' + site);
+
+            // Intro-Preview
+            var prev = document.getElementById('leg-intro-preview');
+            if (prev) {
+                if (introFull) {
+                    prev.style.color       = '#c4704a';
+                    prev.style.borderColor = '#c4704a';
+                    prev.textContent       = introFull;
+                } else if (intrTpl) {
+                    prev.style.color       = '#c4704a';
+                    prev.style.borderColor = '#c4704a';
+                    prev.textContent       = intrTpl.replace(/\{noun\}/g, nounFull || '[Produktname]');
+                } else {
+                    prev.style.color       = '#bbb';
+                    prev.style.borderColor = '#ddd';
+                    prev.textContent       = '(kein Template — Etsy-Text beginnt direkt ohne Einleitung)';
+                }
             }
 
-            [pfxEl, sfxEl, descEl, fkwEl].forEach(function(el){
-                if (el) el.addEventListener('input', refresh);
+            // Also update SERP preview inside the active card
+            var serpT = card.querySelector('.serp-title');
+            var serpD = card.querySelector('.serp-desc');
+            if (serpT) serpT.textContent = (nounFull || exNoun) + ' – ' + cat + ' | ' + site;
+            if (serpD) serpD.textContent = (nounFull || exNoun) + (dsfx ? ' – ' + dsfx.substring(0, 80) : '') + '.';
+        }
+
+        document.querySelectorAll('.seo-cat-card').forEach(function(card) {
+            card.addEventListener('focusin', function() { activateCard(card); });
+            card.querySelectorAll('input, textarea').forEach(function(el) {
+                el.addEventListener('input', function() {
+                    if (activeCard === card) activateCard(card);
+                });
             });
         });
+
+        // Activate first card on load
+        var first = document.querySelector('.seo-cat-card');
+        if (first) activateCard(first);
     })();
     </script>
     </div><!-- /form column -->
 
     <!-- Right: sticky legend card -->
     <div style="position:sticky;top:52px">
-        <div style="background:#fff;border:1px solid #e2e4e7;border-radius:8px;padding:1.1rem 1.2rem">
-            <h3 style="margin:0 0 .7rem;font-size:.9rem;font-weight:700;color:#1d2327;padding-bottom:.55rem;border-bottom:1px solid #f0f0f0">
+        <div style="background:#fff;border:1px solid #e2e4e7;border-radius:8px;padding:1.1rem 1.2rem;font-size:.8rem">
+
+            <h3 style="margin:0 0 .6rem;font-size:.88rem;font-weight:700;color:#1d2327;padding-bottom:.5rem;border-bottom:1px solid #f0f0f0">
                 Felder-Legende
             </h3>
 
-            <?php
-            // Use first category as live example base, fallback to generic "Tasse"
-            $ex_term   = !empty($terms) ? $terms[0] : null;
-            $ex_cat    = $ex_term ? esc_html($ex_term->name) : 'Keramikwerkstatt';
-            $ex_prefix = $ex_term ? esc_html((string) get_term_meta($ex_term->term_id, '_annyhase_title_prefix', true)) : 'Keramik';
-            $ex_suffix = $ex_term ? esc_html((string) get_term_meta($ex_term->term_id, '_annyhase_title_suffix', true)) : '';
-            $ex_fkwA   = $ex_term ? esc_html((string) get_term_meta($ex_term->term_id, '_annyhase_focuskw_addon', true)) : 'handgetöpfert';
-            $noun_parts = array_filter([$ex_prefix, 'Tasse', $ex_suffix]);
-            $ex_noun    = implode(' ', $noun_parts) ?: 'Keramik Tasse';
-            $ex_fkw     = trim(implode(' ', array_filter([$ex_prefix, 'Tasse', $ex_fkwA]))) ?: 'Keramik Tasse handgetöpfert';
-            $cs = 'background:#f3f4f5;padding:1px 5px;border-radius:3px;font-size:.78rem';
-            ?>
+            <!-- Context: which category / which product is shown -->
+            <div style="background:#f8f5f0;border:1px solid #ede6dc;border-radius:5px;padding:.4rem .65rem;font-size:.75rem;color:#666;margin-bottom:.75rem;line-height:1.6">
+                Kategorie: <strong id="leg-context-cat" style="color:#1d2327">–</strong><br>
+                Beispielprodukt: <em id="leg-context-product" style="color:#555">–</em>
+            </div>
 
-            <dl style="margin:0;font-size:.8rem;color:#444;line-height:1.55">
+            <dl style="margin:0;color:#444;line-height:1.5">
 
-                <dt style="font-weight:700;margin-top:.6rem;color:#c4704a">Titel-Prefix</dt>
-                <dd style="margin:.1rem 0 .1rem .6rem;color:#666">Steht VOR dem Produktnamen im SEO-Titel.</dd>
-                <dd style="margin:0 0 .3rem .6rem"><code style="<?php echo $cs; ?>"><?php echo $ex_prefix ?: '(leer)'; ?></code> + <em>Tasse</em> → <strong><?php echo $ex_prefix ? esc_html($ex_prefix) . ' Tasse' : 'Tasse'; ?></strong></dd>
+                <dt style="font-weight:700;margin-top:.5rem;color:#c4704a">Titel-Prefix</dt>
+                <dd style="margin:.05rem 0 .05rem .5rem;color:#777;font-size:.75rem">Steht VOR dem Produktnamen im Google-Titel.</dd>
+                <dd style="margin:0 0 .45rem .5rem;color:#333" id="leg-ex-prefix">–</dd>
 
-                <dt style="font-weight:700;margin-top:.6rem;color:#c4704a">Titel-Suffix</dt>
-                <dd style="margin:.1rem 0 .1rem .6rem;color:#666">Steht NACH dem Produktnamen im SEO-Titel.</dd>
-                <dd style="margin:0 0 .3rem .6rem"><em><?php echo $ex_prefix ? esc_html($ex_prefix) . ' Tasse' : 'Tasse'; ?></em> + <code style="<?php echo $cs; ?>"><?php echo $ex_suffix ?: 'nach Maß'; ?></code> → <strong><span id="legend-example-noun"><?php echo esc_html($ex_noun); ?></span></strong></dd>
+                <dt style="font-weight:700;margin-top:.5rem;color:#c4704a">Titel-Suffix</dt>
+                <dd style="margin:.05rem 0 .05rem .5rem;color:#777;font-size:.75rem">Steht NACH dem Produktnamen. Ergibt zusammen mit Prefix den vollständigen SEO-Titel-Noun.</dd>
+                <dd style="margin:0 0 .45rem .5rem"><strong id="leg-ex-suffix" style="color:#1d2327">–</strong></dd>
 
-                <dt style="font-weight:700;margin-top:.6rem;color:#c4704a">Suffix wenn personalisierbar</dt>
-                <dd style="margin:.1rem 0 .1rem .6rem;color:#666">Ersetzt Titel-Suffix wenn Etsy-Listing <code style="<?php echo $cs; ?>">is_personalizable = true</code>.</dd>
-                <dd style="margin:0 0 .3rem .6rem"><code style="<?php echo $cs; ?>">mit Namen</code> → <em><?php echo $ex_prefix ? esc_html($ex_prefix) . ' ' : ''; ?>Tasse mit Namen</em></dd>
+                <dt style="font-weight:700;margin-top:.5rem;color:#c4704a">Suffix wenn personalisierbar</dt>
+                <dd style="margin:.05rem 0 .05rem .5rem;color:#777;font-size:.75rem">Etsy markiert Listings automatisch als personalisierbar. Dann ersetzt dieser Suffix den normalen Titel-Suffix.</dd>
+                <dd style="margin:0 0 .45rem .5rem;color:#333" id="leg-ex-pers">–</dd>
 
-                <dt style="font-weight:700;margin-top:.6rem;color:#c4704a">Fallback Focus KW</dt>
-                <dd style="margin:.1rem 0 .1rem .6rem;color:#666">Nur verwendet wenn aus den Tags kein Produktname ableitbar ist.</dd>
-                <dd style="margin:0 0 .3rem .6rem"><code style="<?php echo $cs; ?>">handgetöpferte Keramik</code></dd>
+                <dt style="font-weight:700;margin-top:.5rem;color:#c4704a">Fallback Focus Keyword</dt>
+                <dd style="margin:.05rem 0 .45rem .5rem;color:#777;font-size:.75rem">Wird als Yoast-Fokusphrase verwendet wenn aus den Etsy-Tags kein Produktname ableitbar ist (z.&thinsp;B. bei sehr generischen Tags).</dd>
 
-                <dt style="font-weight:700;margin-top:.6rem;color:#c4704a">Focus KW Zusatz</dt>
-                <dd style="margin:.1rem 0 .1rem .6rem;color:#666">Wird hinter Prefix + Titel in der Fokusphrase ergänzt.</dd>
-                <dd style="margin:0 0 .3rem .6rem">Fokusphrase: <strong><span id="legend-example-fkw"><?php echo esc_html($ex_fkw); ?></span></strong></dd>
+                <dt style="font-weight:700;margin-top:.5rem;color:#c4704a">Focus KW Zusatz</dt>
+                <dd style="margin:.05rem 0 .05rem .5rem;color:#777;font-size:.75rem">Wird hinter Prefix + Titel in die Yoast-Fokusphrase eingefügt. Das ist die Phrase auf die Yoast prüft ob sie im Text vorkommt.</dd>
+                <dd style="margin:0 0 .45rem .5rem">Fokusphrase: <strong id="leg-ex-fkw" style="color:#1d2327">–</strong></dd>
 
-                <dt style="font-weight:700;margin-top:.6rem;color:#c4704a">Meta-Desc. Suffix</dt>
-                <dd style="margin:.1rem 0 .1rem .6rem;color:#666">Letzter Satz der automatischen Meta-Description.</dd>
-                <dd style="margin:0 0 .3rem .6rem"><code style="<?php echo $cs; ?>">Hochbrand, spülmaschinengeeignet.</code></dd>
+                <dt style="font-weight:700;margin-top:.5rem;color:#c4704a">Meta-Desc. Suffix</dt>
+                <dd style="margin:.05rem 0 .05rem .5rem;color:#777;font-size:.75rem">Wird als letzter Satz an die automatisch generierte Meta-Description angehängt — das ist der graue Text unter dem blauen Link bei Google.</dd>
+                <dd style="margin:0 0 .45rem .5rem;color:#545454;font-style:italic" id="leg-ex-meta">–</dd>
 
-                <dt style="font-weight:700;margin-top:.6rem;color:#c4704a">SEO Intro-Template</dt>
-                <dd style="margin:.1rem 0 .1rem .6rem;color:#666">Einleitungssatz VOR der Etsy-Beschreibung. <code style="<?php echo $cs; ?>">{noun}</code> = Prefix + Titel + Suffix.</dd>
-                <dd style="margin:0 0 .3rem .6rem">
-                    <code style="<?php echo $cs; ?>">{noun} – ein echtes Unikat.</code><br>
-                    → <em><?php echo esc_html($ex_noun); ?> – ein echtes Unikat.</em>
+                <dt style="font-weight:700;margin-top:.5rem;color:#c4704a">SEO Intro-Template</dt>
+                <dd style="margin:.05rem 0 .35rem .5rem;color:#777;font-size:.75rem">
+                    Erscheint als <strong style="color:#333">erster Satz der Produktbeschreibung</strong> auf deiner Website, direkt vor dem importierten Etsy-Text. Schreib einen einzigartigen Satz — Google erkennt dadurch deinen Text als verschieden vom Etsy-Original.
+                    <code style="background:#f3f4f5;padding:1px 4px;border-radius:3px;font-size:.72rem">{noun}</code> wird ersetzt durch Prefix&nbsp;+&nbsp;Produktname&nbsp;+&nbsp;Suffix.
+                </dd>
+                <!-- Visual product page mockup -->
+                <dd style="margin:0 0 .1rem .5rem">
+                    <div style="border:1px solid #ddd;border-radius:5px;overflow:hidden">
+                        <div style="background:#2c2c2c;padding:.3rem .6rem;font-size:.67rem;color:#aaa;letter-spacing:.04em;display:flex;align-items:center;gap:.4rem">
+                            <span style="display:inline-flex;gap:.25rem"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f56;display:inline-block"></span><span style="width:7px;height:7px;border-radius:50%;background:#ffbd2e;display:inline-block"></span><span style="width:7px;height:7px;border-radius:50%;background:#27c93f;display:inline-block"></span></span>
+                            annyhase.de/produkte/…
+                        </div>
+                        <div style="padding:.55rem .7rem;background:#fff">
+                            <div style="font-size:.67rem;color:#999;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.3rem">Produktbeschreibung</div>
+                            <div id="leg-intro-preview" style="color:#bbb;border-left:2px solid #ddd;padding-left:.45rem;margin-bottom:.35rem;line-height:1.5;font-size:.78rem">
+                                (kein Template — Etsy-Text beginnt direkt ohne Einleitung)
+                            </div>
+                            <div style="color:#ccc;font-size:.71rem">↓&nbsp; Importierter Etsy-Text …</div>
+                        </div>
+                    </div>
                 </dd>
 
             </dl>
 
-            <!-- SEO-Titel Aufbau -->
-            <div style="margin-top:.9rem;padding:.65rem .75rem;background:#f0f6fc;border:1px solid #b8d4ea;border-radius:6px;font-size:.76rem;color:#444">
-                <strong style="display:block;margin-bottom:.3rem">Yoast SEO-Titel:</strong>
-                <span style="font-family:monospace;color:#888">[Prefix] [Produktname] [Suffix]</span><br>
-                <span style="color:#1a0dab;font-weight:600"><?php echo esc_html($ex_noun); ?> – <?php echo $ex_cat; ?> | <?php echo esc_html(get_bloginfo('name')); ?></span>
-            </div>
-
-            <div style="margin-top:.75rem;padding:.55rem .75rem;background:#fffbea;border:1px solid #f0c040;border-radius:6px;font-size:.76rem;color:#666">
-                <strong>Neue Kategorien</strong> erscheinen hier automatisch sobald der Etsy-Sync sie anlegt — kein Code-Update nötig.
+            <!-- Live Yoast-Titel -->
+            <div style="margin-top:.9rem;padding:.5rem .65rem;background:#f0f6fc;border:1px solid #b8d4ea;border-radius:5px">
+                <div style="font-size:.67rem;text-transform:uppercase;letter-spacing:.04em;color:#6b8fa8;font-weight:600;margin-bottom:.2rem">Yoast SEO-Titel bei Google:</div>
+                <div id="leg-seo-title" style="color:#1a0dab;font-weight:600;font-size:.8rem;word-break:break-word">–</div>
+                <div style="font-size:.67rem;color:#888;margin-top:.15rem">Aufbau: [Prefix] [Produktname] [Suffix] – [Kategorie] | [Shop]</div>
             </div>
 
         </div>
