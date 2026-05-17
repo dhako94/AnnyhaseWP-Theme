@@ -613,12 +613,16 @@ add_action('wp_head', function (): void {
     }
 
     if (is_singular('produkt') && $post) {
-        $price_raw  = get_post_meta($post->ID, '_produkt_preis', true);
-        $price_raw  = trim(str_replace(['€', ' '], '', (string) $price_raw));
-        $etsy_prod  = get_post_meta($post->ID, '_etsy_url', true);
+        $price_raw   = get_post_meta($post->ID, '_produkt_preis', true);
+        $price_raw   = trim(str_replace(['€', ' '], '', (string) $price_raw));
+        // Convert German decimal format (comma) to a valid schema.org float (dot).
+        $price_float = $price_raw ? round((float) str_replace(',', '.', $price_raw), 2) : 0.0;
+        $etsy_prod   = get_post_meta($post->ID, '_etsy_url', true);
         $img_url    = get_the_post_thumbnail_url($post->ID, 'product-wide');
         $prod_url   = get_permalink($post->ID);
         $prod_desc  = wp_strip_all_tags(get_the_excerpt($post->ID) ?: wp_trim_words(get_the_content(null, false, $post->ID), 40));
+
+        $materials = (string) get_post_meta($post->ID, '_etsy_materials', true);
 
         $product = [
             '@type'        => 'Product',
@@ -628,20 +632,67 @@ add_action('wp_head', function (): void {
             'brand'        => ['@type' => 'Brand', 'name' => $site_name],
             'manufacturer' => ['@id' => $site_url . '#organization'],
         ];
-        if ($img_url) {
-            $product['image'] = $img_url;
-        }
-        if ($price_raw) {
+        if ($img_url)   { $product['image']    = $img_url; }
+        if ($materials) { $product['material'] = $materials; }
+        if ($price_float > 0) {
             $product['offers'] = [
-                '@type'         => 'Offer',
-                'price'         => $price_raw,
-                'priceCurrency' => 'EUR',
-                'availability'  => $etsy_prod
+                '@type'           => 'Offer',
+                'price'           => $price_float,
+                'priceCurrency'   => 'EUR',
+                'priceValidUntil' => gmdate('Y-m-d', strtotime('+1 year')),
+                'availability'    => $etsy_prod
                     ? 'https://schema.org/InStock'
                     : 'https://schema.org/PreOrder',
-                'url'           => $etsy_prod ?: $prod_url,
-                'seller'        => ['@id' => $site_url . '#organization'],
+                'url'             => $etsy_prod ?: $prod_url,
+                'seller'          => ['@id' => $site_url . '#organization'],
             ];
+        }
+
+        // aggregateRating — uses shop-level Etsy stats (product-level ratings are not available via API).
+        $etsy_stats = function_exists('etsy_sync_fetch_stats') ? etsy_sync_fetch_stats() : [];
+        $rating_val = isset($etsy_stats['rating'])
+            ? (float) str_replace(',', '.', (string) $etsy_stats['rating']) : 0.0;
+        $review_cnt = isset($etsy_stats['reviews'])
+            ? (int) preg_replace('/\D/', '', (string) $etsy_stats['reviews']) : 0;
+        if ($rating_val > 0 && $review_cnt > 0) {
+            $product['aggregateRating'] = [
+                '@type'       => 'AggregateRating',
+                'ratingValue' => $rating_val,
+                'reviewCount' => $review_cnt,
+                'bestRating'  => 5,
+                'worstRating' => 1,
+            ];
+        }
+
+        // review — prefer a highlighted bewertung, fall back to the highest-rated one.
+        $review_posts = get_posts([
+            'post_type' => 'bewertung', 'posts_per_page' => 1,
+            'post_status' => 'publish',
+            'meta_key' => '_bewertung_highlight', 'meta_value' => '1',
+        ]);
+        if (empty($review_posts)) {
+            $review_posts = get_posts([
+                'post_type' => 'bewertung', 'posts_per_page' => 1,
+                'post_status' => 'publish',
+                'meta_key' => '_bewertung_sterne', 'orderby' => 'meta_value_num', 'order' => 'DESC',
+            ]);
+        }
+        if (!empty($review_posts)) {
+            $r       = $review_posts[0];
+            $r_stars = (int) (get_post_meta($r->ID, '_bewertung_sterne', true) ?: 5);
+            $r_text  = mb_substr(wp_strip_all_tags(get_the_content(null, false, $r->ID)), 0, 500);
+            $r_name  = get_the_title($r->ID) ?: 'Etsy Customer';
+            if ($r_text) {
+                $product['review'] = [
+                    '@type'        => 'Review',
+                    'reviewRating' => [
+                        '@type' => 'Rating', 'ratingValue' => $r_stars,
+                        'bestRating' => 5, 'worstRating' => 1,
+                    ],
+                    'author'     => ['@type' => 'Person', 'name' => $r_name],
+                    'reviewBody' => $r_text,
+                ];
+            }
         }
 
         $terms    = get_the_terms($post->ID, 'produktkategorie');

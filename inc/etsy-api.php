@@ -992,6 +992,31 @@ function etsy_sync_set_product_term(int $post_id, int $section_id, array $sectio
 }
 
 /**
+ * Stores listing tags and materials from Etsy as post meta.
+ *
+ * _etsy_tags      – comma-separated keyword list (mirrors Etsy listing tags).
+ * _etsy_materials – comma-separated list of materials used.
+ *
+ * Both are overwritten on each sync to stay in sync with Etsy.
+ * Values are used in the Product schema (material property) and available
+ * for Yoast SEO templates via the stored meta fields.
+ *
+ * @param int   $post_id WP post ID
+ * @param array $listing Raw listing array from the Etsy API response
+ */
+function etsy_sync_save_extra_meta(int $post_id, array $listing): void {
+    $tags = array_values(array_filter(array_map('sanitize_text_field', $listing['tags'] ?? [])));
+    if ($tags) {
+        update_post_meta($post_id, '_etsy_tags', implode(', ', $tags));
+    }
+
+    $materials = array_values(array_filter(array_map('sanitize_text_field', $listing['materials'] ?? [])));
+    if ($materials) {
+        update_post_meta($post_id, '_etsy_materials', implode(', ', $materials));
+    }
+}
+
+/**
  * Downloads and attaches all images and the video thumbnail for a product post.
  *
  * Skips image download if the featured image is already set (unless $force = true).
@@ -1174,6 +1199,7 @@ function etsy_sync_products(bool $update_existing = false): array {
                     if ($etsy_url)  update_post_meta($post_id, '_etsy_url',      $etsy_url);
                     etsy_sync_set_product_term($post_id, $section_id, $sections);
                     etsy_sync_auto_yoast_meta($post_id);
+                    etsy_sync_save_extra_meta($post_id, $listing);
                     $result['updated']++;
                 }
                 if (!get_post_thumbnail_id($post_id)) {
@@ -1192,6 +1218,7 @@ function etsy_sync_products(bool $update_existing = false): array {
                 if ($etsy_url)  update_post_meta($post_id, '_etsy_url',      $etsy_url);
                 etsy_sync_set_product_term($post_id, $section_id, $sections);
                 etsy_sync_auto_yoast_meta($post_id);
+                etsy_sync_save_extra_meta($post_id, $listing);
                 $mc = etsy_sync_import_listing_media($post_id, $listing, false);
                 $result['images_ok']  += $mc['images_ok'];
                 $result['images_err'] += $mc['images_err'];
@@ -1335,6 +1362,7 @@ add_action('wp_ajax_etsy_sync_products_batch', function (): void {
                 if ($etsy_url)  update_post_meta($post_id, '_etsy_url',      $etsy_url);
                 etsy_sync_set_product_term($post_id, $section_id, $sections);
                 etsy_sync_auto_yoast_meta($post_id);
+                etsy_sync_save_extra_meta($post_id, $listing);
                 $updated++;
             }
         } else {
@@ -1347,6 +1375,7 @@ add_action('wp_ajax_etsy_sync_products_batch', function (): void {
                 if ($etsy_url)  update_post_meta($post_id, '_etsy_url',      $etsy_url);
                 etsy_sync_set_product_term($post_id, $section_id, $sections);
                 etsy_sync_auto_yoast_meta($post_id);
+                etsy_sync_save_extra_meta($post_id, $listing);
                 $new++;
             }
         }
