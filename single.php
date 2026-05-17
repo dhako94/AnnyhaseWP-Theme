@@ -213,18 +213,6 @@ $has_multi = count($gallery_items) > 1;
                     <?php endif; ?>
                 </div>
 
-                <!-- Materials (Etsy tags are kept as WP post tags for Yoast SEO, not shown here) -->
-                <?php
-                $prod_materials = (string) get_post_meta($post_id, '_etsy_materials', true);
-                if ($prod_materials):
-                ?>
-                <div class="product-info__meta-tags">
-                    <div class="product-info__meta-row">
-                        <span class="product-info__meta-label"><?php esc_html_e('Material', 'annyhase'); ?></span>
-                        <span class="product-info__meta-value"><?php echo esc_html($prod_materials); ?></span>
-                    </div>
-                </div>
-                <?php endif; ?>
 
             </div><!-- /product-info -->
 

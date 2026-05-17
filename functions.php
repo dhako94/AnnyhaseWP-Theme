@@ -622,8 +622,6 @@ add_action('wp_head', function (): void {
         $prod_url   = get_permalink($post->ID);
         $prod_desc  = wp_strip_all_tags(get_the_excerpt($post->ID) ?: wp_trim_words(get_the_content(null, false, $post->ID), 40));
 
-        $materials = (string) get_post_meta($post->ID, '_etsy_materials', true);
-
         $product = [
             '@type'        => 'Product',
             'name'         => get_the_title($post->ID),
@@ -632,8 +630,7 @@ add_action('wp_head', function (): void {
             'brand'        => ['@type' => 'Brand', 'name' => $site_name],
             'manufacturer' => ['@id' => $site_url . '#organization'],
         ];
-        if ($img_url)   { $product['image']    = $img_url; }
-        if ($materials) { $product['material'] = $materials; }
+        if ($img_url) { $product['image'] = $img_url; }
         if ($price_float > 0) {
             $product['offers'] = [
                 '@type'           => 'Offer',
@@ -1422,31 +1419,20 @@ function annyhase_produkt_details_cb(WP_Post $post): void {
         </div>
     </div>
     <?php
-    // Read-only display of data synced from Etsy (not user-editable).
-    $etsy_tags      = (string) get_post_meta($post->ID, '_etsy_tags',      true);
-    $etsy_materials = (string) get_post_meta($post->ID, '_etsy_materials', true);
-    if ($etsy_tags || $etsy_materials):
+    // Read-only display of Etsy tags synced from Etsy (not user-editable).
+    $etsy_tags = (string) get_post_meta($post->ID, '_etsy_tags', true);
+    if ($etsy_tags):
+        $tag_list = array_filter(array_map('trim', explode(',', $etsy_tags)));
     ?>
     <div style="margin-top:16px;padding:12px 14px;background:#f6f6f6;border:1px solid #ddd;border-radius:6px">
-        <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#888;margin:0 0 10px">
-            <?php esc_html_e('Etsy-Sync-Daten (automatisch, nicht editierbar)', 'annyhase'); ?>
+        <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#888;margin:0 0 8px">
+            <?php esc_html_e('Etsy-Tags (automatisch aus Sync, auch als WP-Tags gesetzt)', 'annyhase'); ?>
         </p>
-        <?php if ($etsy_materials): ?>
-        <p style="margin:0 0 8px;font-size:13px;line-height:1.5">
-            <strong style="color:#333"><?php esc_html_e('Materialien:', 'annyhase'); ?></strong>
-            <span style="color:#555"><?php echo esc_html($etsy_materials); ?></span>
-        </p>
-        <?php endif; ?>
-        <?php if ($etsy_tags):
-            $tag_list = array_filter(array_map('trim', explode(',', $etsy_tags)));
-        ?>
-        <p style="margin:0 0 6px;font-size:13px"><strong style="color:#333"><?php esc_html_e('Tags:', 'annyhase'); ?></strong></p>
         <div style="display:flex;flex-wrap:wrap;gap:4px">
             <?php foreach ($tag_list as $t): ?>
             <span style="background:#eef3f0;border:1px solid #c4d8c0;color:#4a7042;padding:2px 9px;border-radius:20px;font-size:11px"><?php echo esc_html($t); ?></span>
             <?php endforeach; ?>
         </div>
-        <?php endif; ?>
     </div>
     <?php endif; ?>
     <?php

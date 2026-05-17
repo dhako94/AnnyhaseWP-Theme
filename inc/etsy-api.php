@@ -992,14 +992,13 @@ function etsy_sync_set_product_term(int $post_id, int $section_id, array $sectio
 }
 
 /**
- * Stores listing tags and materials from Etsy as post meta.
+ * Stores Etsy listing tags as post meta and native WP post tags.
  *
- * _etsy_tags      – comma-separated keyword list (mirrors Etsy listing tags).
- * _etsy_materials – comma-separated list of materials used.
+ * _etsy_tags – comma-separated keyword list (mirrors Etsy listing tags).
+ *              Overwritten on every sync to stay current with Etsy.
  *
- * Both are overwritten on each sync to stay in sync with Etsy.
- * Values are used in the Product schema (material property) and available
- * for Yoast SEO templates via the stored meta fields.
+ * Tags are also assigned via wp_set_post_terms (post_tag) so Yoast SEO
+ * includes them in its content analysis and %%tags%% templates work.
  *
  * @param int   $post_id WP post ID
  * @param array $listing Raw listing array from the Etsy API response
@@ -1011,11 +1010,6 @@ function etsy_sync_save_extra_meta(int $post_id, array $listing): void {
         // Assign as native WP post tags so Yoast SEO includes them in its
         // content analysis and %%tags%% replacement variables work correctly.
         wp_set_post_terms($post_id, $tags, 'post_tag', false);
-    }
-
-    $materials = array_values(array_filter(array_map('sanitize_text_field', $listing['materials'] ?? [])));
-    if ($materials) {
-        update_post_meta($post_id, '_etsy_materials', implode(', ', $materials));
     }
 }
 
