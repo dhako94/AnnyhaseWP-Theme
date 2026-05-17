@@ -331,12 +331,12 @@ function annyhase_seo_hub_tab_categories(): void {
     $site_name = get_bloginfo('name');
     $site_host = (string) parse_url(home_url(), PHP_URL_HOST);
     ?>
-    <div style="max-width:960px">
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) 305px;gap:1.5rem;align-items:start;max-width:1300px">
+    <div><!-- left: form column -->
 
     <p style="color:#555;margin-bottom:1.5rem;font-size:.9rem">
         Alle Felder werden beim nächsten Etsy-Sync auf die Produkte dieser Kategorie angewendet.
-        <strong>Titel-Prefix/Suffix</strong> und <strong>Focus-KW Zusatz</strong> bestimmen wie Produkttitel und Fokusphrase aufgebaut werden.
-        Lass Felder leer, die für eine Kategorie nicht relevant sind.
+        <strong>Neue Kategorien</strong> erscheinen hier automatisch sobald der Sync sie anlegt — kein Code-Update nötig.
     </p>
 
     <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
@@ -481,28 +481,106 @@ function annyhase_seo_hub_tab_categories(): void {
             var pfxEl  = card.querySelector('.an-prefix');
             var sfxEl  = card.querySelector('.an-suffix');
             var descEl = card.querySelector('.an-desc-sfx');
+            var fkwEl  = card.querySelector('.an-fkw-add');
             var title  = card.querySelector('.serp-title');
             var desc   = card.querySelector('.serp-desc');
             var site   = card.dataset.site || '';
             var cat    = card.dataset.cat  || '';
 
             function refresh(){
-                var pfx  = pfxEl  ? pfxEl.value.trim()  : '';
-                var sfx  = sfxEl  ? sfxEl.value.trim()  : '';
-                var dsfx = descEl ? descEl.value.trim()  : '';
+                var pfx   = pfxEl  ? pfxEl.value.trim()  : '';
+                var sfx   = sfxEl  ? sfxEl.value.trim()  : '';
+                var dsfx  = descEl ? descEl.value.trim()  : '';
+                var fkwA  = fkwEl  ? fkwEl.value.trim()   : '';
                 var parts = [pfx, cat, sfx].filter(Boolean);
                 var noun  = parts.join(' ');
                 if (title) title.textContent = noun + ' – ' + cat + ' | ' + site;
                 if (desc)  desc.textContent  = noun + (dsfx ? ' – ' + dsfx.substring(0, 80) : '') + '.';
+                // Update legend live example
+                var leg = document.getElementById('legend-example-noun');
+                var legFkw = document.getElementById('legend-example-fkw');
+                if (leg)    leg.textContent    = noun || '…';
+                if (legFkw) legFkw.textContent = [pfx, cat, fkwA].filter(Boolean).join(' ') || '…';
             }
 
-            [pfxEl, sfxEl, descEl].forEach(function(el){
+            [pfxEl, sfxEl, descEl, fkwEl].forEach(function(el){
                 if (el) el.addEventListener('input', refresh);
             });
         });
     })();
     </script>
-    </div>
+    </div><!-- /form column -->
+
+    <!-- Right: sticky legend card -->
+    <div style="position:sticky;top:52px">
+        <div style="background:#fff;border:1px solid #e2e4e7;border-radius:8px;padding:1.1rem 1.2rem">
+            <h3 style="margin:0 0 .7rem;font-size:.9rem;font-weight:700;color:#1d2327;padding-bottom:.55rem;border-bottom:1px solid #f0f0f0">
+                Felder-Legende
+            </h3>
+
+            <?php
+            // Use first category as live example base, fallback to generic "Tasse"
+            $ex_term   = !empty($terms) ? $terms[0] : null;
+            $ex_cat    = $ex_term ? esc_html($ex_term->name) : 'Keramikwerkstatt';
+            $ex_prefix = $ex_term ? esc_html((string) get_term_meta($ex_term->term_id, '_annyhase_title_prefix', true)) : 'Keramik';
+            $ex_suffix = $ex_term ? esc_html((string) get_term_meta($ex_term->term_id, '_annyhase_title_suffix', true)) : '';
+            $ex_fkwA   = $ex_term ? esc_html((string) get_term_meta($ex_term->term_id, '_annyhase_focuskw_addon', true)) : 'handgetöpfert';
+            $noun_parts = array_filter([$ex_prefix, 'Tasse', $ex_suffix]);
+            $ex_noun    = implode(' ', $noun_parts) ?: 'Keramik Tasse';
+            $ex_fkw     = trim(implode(' ', array_filter([$ex_prefix, 'Tasse', $ex_fkwA]))) ?: 'Keramik Tasse handgetöpfert';
+            $cs = 'background:#f3f4f5;padding:1px 5px;border-radius:3px;font-size:.78rem';
+            ?>
+
+            <dl style="margin:0;font-size:.8rem;color:#444;line-height:1.55">
+
+                <dt style="font-weight:700;margin-top:.6rem;color:#c4704a">Titel-Prefix</dt>
+                <dd style="margin:.1rem 0 .1rem .6rem;color:#666">Steht VOR dem Produktnamen im SEO-Titel.</dd>
+                <dd style="margin:0 0 .3rem .6rem"><code style="<?php echo $cs; ?>"><?php echo $ex_prefix ?: '(leer)'; ?></code> + <em>Tasse</em> → <strong><?php echo $ex_prefix ? esc_html($ex_prefix) . ' Tasse' : 'Tasse'; ?></strong></dd>
+
+                <dt style="font-weight:700;margin-top:.6rem;color:#c4704a">Titel-Suffix</dt>
+                <dd style="margin:.1rem 0 .1rem .6rem;color:#666">Steht NACH dem Produktnamen im SEO-Titel.</dd>
+                <dd style="margin:0 0 .3rem .6rem"><em><?php echo $ex_prefix ? esc_html($ex_prefix) . ' Tasse' : 'Tasse'; ?></em> + <code style="<?php echo $cs; ?>"><?php echo $ex_suffix ?: 'nach Maß'; ?></code> → <strong><span id="legend-example-noun"><?php echo esc_html($ex_noun); ?></span></strong></dd>
+
+                <dt style="font-weight:700;margin-top:.6rem;color:#c4704a">Suffix wenn personalisierbar</dt>
+                <dd style="margin:.1rem 0 .1rem .6rem;color:#666">Ersetzt Titel-Suffix wenn Etsy-Listing <code style="<?php echo $cs; ?>">is_personalizable = true</code>.</dd>
+                <dd style="margin:0 0 .3rem .6rem"><code style="<?php echo $cs; ?>">mit Namen</code> → <em><?php echo $ex_prefix ? esc_html($ex_prefix) . ' ' : ''; ?>Tasse mit Namen</em></dd>
+
+                <dt style="font-weight:700;margin-top:.6rem;color:#c4704a">Fallback Focus KW</dt>
+                <dd style="margin:.1rem 0 .1rem .6rem;color:#666">Nur verwendet wenn aus den Tags kein Produktname ableitbar ist.</dd>
+                <dd style="margin:0 0 .3rem .6rem"><code style="<?php echo $cs; ?>">handgetöpferte Keramik</code></dd>
+
+                <dt style="font-weight:700;margin-top:.6rem;color:#c4704a">Focus KW Zusatz</dt>
+                <dd style="margin:.1rem 0 .1rem .6rem;color:#666">Wird hinter Prefix + Titel in der Fokusphrase ergänzt.</dd>
+                <dd style="margin:0 0 .3rem .6rem">Fokusphrase: <strong><span id="legend-example-fkw"><?php echo esc_html($ex_fkw); ?></span></strong></dd>
+
+                <dt style="font-weight:700;margin-top:.6rem;color:#c4704a">Meta-Desc. Suffix</dt>
+                <dd style="margin:.1rem 0 .1rem .6rem;color:#666">Letzter Satz der automatischen Meta-Description.</dd>
+                <dd style="margin:0 0 .3rem .6rem"><code style="<?php echo $cs; ?>">Hochbrand, spülmaschinengeeignet.</code></dd>
+
+                <dt style="font-weight:700;margin-top:.6rem;color:#c4704a">SEO Intro-Template</dt>
+                <dd style="margin:.1rem 0 .1rem .6rem;color:#666">Einleitungssatz VOR der Etsy-Beschreibung. <code style="<?php echo $cs; ?>">{noun}</code> = Prefix + Titel + Suffix.</dd>
+                <dd style="margin:0 0 .3rem .6rem">
+                    <code style="<?php echo $cs; ?>">{noun} – ein echtes Unikat.</code><br>
+                    → <em><?php echo esc_html($ex_noun); ?> – ein echtes Unikat.</em>
+                </dd>
+
+            </dl>
+
+            <!-- SEO-Titel Aufbau -->
+            <div style="margin-top:.9rem;padding:.65rem .75rem;background:#f0f6fc;border:1px solid #b8d4ea;border-radius:6px;font-size:.76rem;color:#444">
+                <strong style="display:block;margin-bottom:.3rem">Yoast SEO-Titel:</strong>
+                <span style="font-family:monospace;color:#888">[Prefix] [Produktname] [Suffix]</span><br>
+                <span style="color:#1a0dab;font-weight:600"><?php echo esc_html($ex_noun); ?> – <?php echo $ex_cat; ?> | <?php echo esc_html(get_bloginfo('name')); ?></span>
+            </div>
+
+            <div style="margin-top:.75rem;padding:.55rem .75rem;background:#fffbea;border:1px solid #f0c040;border-radius:6px;font-size:.76rem;color:#666">
+                <strong>Neue Kategorien</strong> erscheinen hier automatisch sobald der Etsy-Sync sie anlegt — kein Code-Update nötig.
+            </div>
+
+        </div>
+    </div><!-- /legend -->
+
+    </div><!-- /grid -->
     <?php
 }
 

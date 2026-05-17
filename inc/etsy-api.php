@@ -1235,9 +1235,14 @@ function etsy_sync_auto_yoast_meta(int $post_id, array $listing = []): void {
 
     $cat_kw      = annyhase_build_yoast_fields($post_id)['focuskw'];
     $focuskw_add = $cfg['focuskw_addon'] ?? '';
-    $focuskw     = $clean_title
-        ? trim($clean_title . ($focuskw_add ? ' ' . $focuskw_add : ''))
-        : $cat_kw;
+    if ($clean_title) {
+        // Include prefix so the focus KW matches the full SEO title noun, e.g.
+        // "Keramik Tasse handgetöpfert" rather than just "Tasse handgetöpfert".
+        $fkw_parts = array_filter([$cfg['prefix'] ?? '', $clean_title, $focuskw_add]);
+        $focuskw   = trim(implode(' ', $fkw_parts));
+    } else {
+        $focuskw   = $cat_kw;
+    }
     if ($focuskw) {
         update_post_meta($post_id, '_yoast_wpseo_focuskw', $focuskw);
     }
