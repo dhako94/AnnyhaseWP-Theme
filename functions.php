@@ -632,18 +632,49 @@ add_action('wp_head', function (): void {
             'manufacturer' => ['@id' => $site_url . '#organization'],
         ];
         if ($img_url) { $product['image'] = $img_url; }
+
+        // material — from Etsy materials list
+        $materials = (string) get_post_meta($post->ID, '_etsy_materials', true);
+        if ($materials) {
+            $product['material'] = $materials;
+        }
+
         if ($price_float > 0) {
-            $product['offers'] = [
+            $qty          = (int) get_post_meta($post->ID, '_etsy_quantity', true);
+            $availability = ($etsy_prod && $qty !== 0)
+                ? ('https://schema.org/' . ($qty > 0 ? 'InStock' : 'OutOfStock'))
+                : ($etsy_prod ? 'https://schema.org/InStock' : 'https://schema.org/PreOrder');
+
+            $offer = [
                 '@type'           => 'Offer',
                 'price'           => $price_float,
                 'priceCurrency'   => 'EUR',
                 'priceValidUntil' => gmdate('Y-m-d', strtotime('+1 year')),
-                'availability'    => $etsy_prod
-                    ? 'https://schema.org/InStock'
-                    : 'https://schema.org/PreOrder',
+                'availability'    => $availability,
                 'url'             => $etsy_prod ?: $prod_url,
                 'seller'          => ['@id' => $site_url . '#organization'],
             ];
+
+            // shippingDetails — production/processing time as handling time
+            $proc_min = (int) get_post_meta($post->ID, '_etsy_processing_min', true);
+            $proc_max = (int) get_post_meta($post->ID, '_etsy_processing_max', true);
+            if ($proc_min > 0) {
+                $offer['shippingDetails'] = [
+                    '@type'              => 'OfferShippingDetails',
+                    'shippingDestination' => [
+                        '@type'          => 'DefinedRegion',
+                        'addressCountry' => 'DE',
+                    ],
+                    'handlingTime' => [
+                        '@type'    => 'QuantitativeValue',
+                        'minValue' => $proc_min,
+                        'maxValue' => max($proc_min, $proc_max),
+                        'unitCode' => 'DAY',
+                    ],
+                ];
+            }
+
+            $product['offers'] = $offer;
         }
 
         // aggregateRating — uses shop-level Etsy stats (product-level ratings are not available via API).
@@ -1444,6 +1475,48 @@ function annyhase_produkt_details_cb(WP_Post $post): void {
             <span style="background:#eef3f0;border:1px solid #c4d8c0;color:#4a7042;padding:2px 9px;border-radius:20px;font-size:11px"><?php echo esc_html($t); ?></span>
             <?php endforeach; ?>
         </div>
+    </div>
+    <?php endif; ?>
+    <?php
+    // Read-only Etsy extra data (processing time, materials, personalisation, quantity, favorites).
+    $e_mat      = (string) get_post_meta($post->ID, '_etsy_materials',                   true);
+    $e_pmin     = (int)    get_post_meta($post->ID, '_etsy_processing_min',               true);
+    $e_pmax     = (int)    get_post_meta($post->ID, '_etsy_processing_max',               true);
+    $e_pers     = get_post_meta($post->ID, '_etsy_personalizable',                        true);
+    $e_pers_txt = (string) get_post_meta($post->ID, '_etsy_personalization_instructions', true);
+    $e_qty      = get_post_meta($post->ID, '_etsy_quantity',                              true);
+    $e_fav      = (int)    get_post_meta($post->ID, '_etsy_favorers',                     true);
+    $e_ct       = (string) get_post_meta($post->ID, '_annyhase_clean_title',              true);
+    if ($e_mat || $e_pmin || $e_pers !== '' || $e_qty !== '' || $e_fav || $e_ct):
+    ?>
+    <div style="margin-top:12px;padding:12px 14px;background:#f0f6fc;border:1px solid #b8d4ea;border-radius:6px">
+        <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6b8fa8;margin:0 0 8px">
+            <?php esc_html_e('Etsy-Produktdaten (read-only, via Sync)', 'annyhase'); ?>
+        </p>
+        <table style="font-size:12px;color:#444;border-collapse:collapse;width:100%">
+            <?php if ($e_ct): ?>
+            <tr><td style="padding:2px 8px 2px 0;width:130px;font-weight:600;color:#666">Clean Title</td><td><?php echo esc_html($e_ct); ?></td></tr>
+            <?php endif; ?>
+            <?php if ($e_pmin > 0): ?>
+            <tr><td style="padding:2px 8px 2px 0;font-weight:600;color:#666">Lieferzeit</td>
+                <td><?php echo $e_pmax > $e_pmin ? esc_html("{$e_pmin}–{$e_pmax} Werktage") : esc_html("{$e_pmin} Werktage"); ?></td></tr>
+            <?php endif; ?>
+            <?php if ($e_mat): ?>
+            <tr><td style="padding:2px 8px 2px 0;font-weight:600;color:#666">Material</td><td><?php echo esc_html($e_mat); ?></td></tr>
+            <?php endif; ?>
+            <?php if ($e_pers !== ''): ?>
+            <tr><td style="padding:2px 8px 2px 0;font-weight:600;color:#666">Personalisierbar</td>
+                <td><?php echo $e_pers === '1' ? '<span style="color:#2e7d32">Ja</span>' : 'Nein'; // phpcs:ignore WordPress.Security.EscapeOutput ?>
+                    <?php if ($e_pers === '1' && $e_pers_txt): ?><br><span style="color:#555;font-size:11px"><?php echo esc_html($e_pers_txt); ?></span><?php endif; ?>
+                </td></tr>
+            <?php endif; ?>
+            <?php if ($e_qty !== ''): ?>
+            <tr><td style="padding:2px 8px 2px 0;font-weight:600;color:#666">Lagerbestand</td><td><?php echo esc_html($e_qty); ?></td></tr>
+            <?php endif; ?>
+            <?php if ($e_fav > 0): ?>
+            <tr><td style="padding:2px 8px 2px 0;font-weight:600;color:#666">Etsy Favorites</td><td><?php echo esc_html($e_fav); ?></td></tr>
+            <?php endif; ?>
+        </table>
     </div>
     <?php endif; ?>
     <?php

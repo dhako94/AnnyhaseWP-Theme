@@ -59,13 +59,25 @@ add_action('admin_post_annyhase_save_seo_categories', function (): void {
     check_admin_referer('annyhase_save_seo_categories');
     if (!current_user_can('manage_categories')) wp_die('Unauthorized');
 
+    // Map of POST key suffix → [meta key, sanitizer]
+    $field_map = [
+        'seo_kw_'        => ['_annyhase_seo_kw',             'sanitize_text_field'],
+        'seo_desc_'      => ['_annyhase_seo_desc',           'sanitize_textarea_field'],
+        'title_prefix_'  => ['_annyhase_title_prefix',       'sanitize_text_field'],
+        'title_suffix_'  => ['_annyhase_title_suffix',       'sanitize_text_field'],
+        'fkw_addon_'     => ['_annyhase_focuskw_addon',      'sanitize_text_field'],
+        'pers_sfx_'      => ['_annyhase_personalizable_sfx', 'sanitize_text_field'],
+        'intro_tpl_'     => ['_annyhase_intro_template',     'sanitize_textarea_field'],
+    ];
+
     $terms = get_terms(['taxonomy' => 'produktkategorie', 'hide_empty' => false]);
     if (!is_wp_error($terms)) {
         foreach ($terms as $term) {
-            $kw     = sanitize_text_field(wp_unslash($_POST['seo_kw_'   . $term->term_id] ?? ''));
-            $suffix = sanitize_textarea_field(wp_unslash($_POST['seo_desc_' . $term->term_id] ?? ''));
-            update_term_meta($term->term_id, '_annyhase_seo_kw',   $kw);
-            update_term_meta($term->term_id, '_annyhase_seo_desc', $suffix);
+            $tid = (int) $term->term_id;
+            foreach ($field_map as $post_pfx => [$meta_key, $sanitizer]) {
+                $raw = wp_unslash($_POST[$post_pfx . $tid] ?? '');
+                update_term_meta($tid, $meta_key, $sanitizer($raw));
+            }
         }
     }
 
@@ -246,8 +258,9 @@ function annyhase_seo_hub_tab_categories(): void {
     <div style="max-width:960px">
 
     <p style="color:#555;margin-bottom:1.5rem;font-size:.9rem">
-        <strong>Focus Keyword</strong> – wird beim Etsy-Sync als Yoast-Fokusphrase für alle Produkte dieser Kategorie gesetzt.<br>
-        <strong>Meta-Desc. Suffix</strong> – ein Satz, der ans Ende der automatisch generierten Meta-Description angehängt wird (z.&thinsp;B. Materialeigenschaften).
+        Alle Felder werden beim nächsten Etsy-Sync auf die Produkte dieser Kategorie angewendet.
+        <strong>Titel-Prefix/Suffix</strong> und <strong>Focus-KW Zusatz</strong> bestimmen wie Produkttitel und Fokusphrase aufgebaut werden.
+        Lass Felder leer, die für eine Kategorie nicht relevant sind.
     </p>
 
     <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
@@ -255,14 +268,21 @@ function annyhase_seo_hub_tab_categories(): void {
         <input type="hidden" name="action" value="annyhase_save_seo_categories">
 
         <?php foreach ($terms as $term):
-            $kw     = (string) get_term_meta($term->term_id, '_annyhase_seo_kw',   true);
-            $suffix = (string) get_term_meta($term->term_id, '_annyhase_seo_desc', true);
-            $tid    = (int) $term->term_id;
+            $tid      = (int) $term->term_id;
+            $kw       = (string) get_term_meta($tid, '_annyhase_seo_kw',             true);
+            $desc_sfx = (string) get_term_meta($tid, '_annyhase_seo_desc',           true);
+            $prefix   = (string) get_term_meta($tid, '_annyhase_title_prefix',       true);
+            $suffix   = (string) get_term_meta($tid, '_annyhase_title_suffix',       true);
+            $fkw_add  = (string) get_term_meta($tid, '_annyhase_focuskw_addon',      true);
+            $pers_sfx = (string) get_term_meta($tid, '_annyhase_personalizable_sfx', true);
+            $intro    = (string) get_term_meta($tid, '_annyhase_intro_template',     true);
         ?>
-        <div class="seo-cat-card" data-site="<?php echo esc_attr($site_name); ?>"
-             style="background:#fff;border:1px solid #e2e4e7;border-radius:8px;padding:1.25rem;margin-bottom:1.25rem">
+        <div class="seo-cat-card"
+             data-site="<?php echo esc_attr($site_name); ?>"
+             data-cat="<?php echo esc_attr($term->name); ?>"
+             style="background:#fff;border:1px solid #e2e4e7;border-radius:8px;padding:1.25rem;margin-bottom:1.5rem">
 
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
                 <h3 style="margin:0;font-size:1rem;font-weight:700">
                     <?php echo esc_html($term->name); ?>
                     <span style="font-weight:400;color:#777;font-size:.82rem">(<?php echo (int) $term->count; ?> Produkte)</span>
@@ -271,37 +291,104 @@ function annyhase_seo_hub_tab_categories(): void {
                    style="font-size:.8rem;color:#666;text-decoration:none">Archiv ↗</a>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+            <!-- Row 1: Titel-Prefix + Titel-Suffix + Personalizable-Suffix -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem;margin-bottom:.85rem">
                 <div>
-                    <label style="display:block;font-size:.83rem;font-weight:600;margin-bottom:.25rem"
-                           for="kw_<?php echo esc_attr($tid); ?>">Focus Keyword</label>
+                    <label style="display:block;font-size:.83rem;font-weight:600;margin-bottom:.2rem"
+                           for="pfx_<?php echo esc_attr($tid); ?>">Titel-Prefix</label>
+                    <input type="text" id="pfx_<?php echo esc_attr($tid); ?>"
+                           name="title_prefix_<?php echo esc_attr($tid); ?>"
+                           value="<?php echo esc_attr($prefix); ?>"
+                           placeholder="z.B. Keramik"
+                           class="regular-text an-prefix" style="width:100%">
+                    <p style="font-size:.72rem;color:#888;margin:.2rem 0 0">Vor dem Produktnamen (leer = kein Prefix)</p>
+                </div>
+                <div>
+                    <label style="display:block;font-size:.83rem;font-weight:600;margin-bottom:.2rem"
+                           for="sfx_<?php echo esc_attr($tid); ?>">Titel-Suffix</label>
+                    <input type="text" id="sfx_<?php echo esc_attr($tid); ?>"
+                           name="title_suffix_<?php echo esc_attr($tid); ?>"
+                           value="<?php echo esc_attr($suffix); ?>"
+                           placeholder="z.B. nach Maß"
+                           class="regular-text an-suffix" style="width:100%">
+                    <p style="font-size:.72rem;color:#888;margin:.2rem 0 0">Nach dem Produktnamen</p>
+                </div>
+                <div>
+                    <label style="display:block;font-size:.83rem;font-weight:600;margin-bottom:.2rem"
+                           for="pers_<?php echo esc_attr($tid); ?>">Suffix wenn personalisierbar</label>
+                    <input type="text" id="pers_<?php echo esc_attr($tid); ?>"
+                           name="pers_sfx_<?php echo esc_attr($tid); ?>"
+                           value="<?php echo esc_attr($pers_sfx); ?>"
+                           placeholder="z.B. personalisiert mit Namen"
+                           class="regular-text" style="width:100%">
+                    <p style="font-size:.72rem;color:#888;margin:.2rem 0 0">Überschreibt Titel-Suffix wenn is_personalizable</p>
+                </div>
+            </div>
+
+            <!-- Row 2: Focus KW + Focus-KW Addon + Meta-Desc Suffix -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem;margin-bottom:.85rem">
+                <div>
+                    <label style="display:block;font-size:.83rem;font-weight:600;margin-bottom:.2rem"
+                           for="kw_<?php echo esc_attr($tid); ?>">Fallback Focus Keyword</label>
                     <input type="text" id="kw_<?php echo esc_attr($tid); ?>"
                            name="seo_kw_<?php echo esc_attr($tid); ?>"
                            value="<?php echo esc_attr($kw); ?>"
-                           placeholder="z.B. handgetöpferte Keramik Tassen"
-                           class="regular-text seo-kw-field" style="width:100%">
+                           placeholder="z.B. handgemachte Keramik Tassen"
+                           class="regular-text an-kw" style="width:100%">
+                    <p style="font-size:.72rem;color:#888;margin:.2rem 0 0">Wenn kein Clean Title ableitbar</p>
                 </div>
                 <div>
-                    <label style="display:block;font-size:.83rem;font-weight:600;margin-bottom:.25rem"
-                           for="sfx_<?php echo esc_attr($tid); ?>">Meta-Desc. Suffix</label>
-                    <textarea id="sfx_<?php echo esc_attr($tid); ?>"
-                              name="seo_desc_<?php echo esc_attr($tid); ?>"
-                              rows="2" class="regular-text seo-sfx-field"
-                              style="width:100%;resize:vertical"><?php echo esc_textarea($suffix); ?></textarea>
+                    <label style="display:block;font-size:.83rem;font-weight:600;margin-bottom:.2rem"
+                           for="fkw_<?php echo esc_attr($tid); ?>">Focus-KW Zusatz</label>
+                    <input type="text" id="fkw_<?php echo esc_attr($tid); ?>"
+                           name="fkw_addon_<?php echo esc_attr($tid); ?>"
+                           value="<?php echo esc_attr($fkw_add); ?>"
+                           placeholder="z.B. handgetöpfert"
+                           class="regular-text an-fkw-add" style="width:100%">
+                    <p style="font-size:.72rem;color:#888;margin:.2rem 0 0">Hinter Clean Title in der Fokusphrase</p>
                 </div>
+                <div>
+                    <label style="display:block;font-size:.83rem;font-weight:600;margin-bottom:.2rem"
+                           for="dsf_<?php echo esc_attr($tid); ?>">Meta-Desc. Suffix</label>
+                    <textarea id="dsf_<?php echo esc_attr($tid); ?>"
+                              name="seo_desc_<?php echo esc_attr($tid); ?>"
+                              rows="2" class="regular-text an-desc-sfx"
+                              style="width:100%;resize:vertical"><?php echo esc_textarea($desc_sfx); ?></textarea>
+                </div>
+            </div>
+
+            <!-- Row 3: SEO Intro-Template (full width) -->
+            <div style="margin-bottom:1rem">
+                <label style="display:block;font-size:.83rem;font-weight:600;margin-bottom:.2rem"
+                       for="intro_<?php echo esc_attr($tid); ?>">SEO Intro-Template</label>
+                <textarea id="intro_<?php echo esc_attr($tid); ?>"
+                          name="intro_tpl_<?php echo esc_attr($tid); ?>"
+                          rows="2" class="large-text"
+                          style="width:100%;resize:vertical"><?php echo esc_textarea($intro); ?></textarea>
+                <p style="font-size:.72rem;color:#888;margin:.2rem 0 0">
+                    Einleitungssatz vor der Etsy-Beschreibung. <code>{noun}</code> = Prefix + Produktname + Suffix.
+                    Beispiel: <em>{noun} – handgetöpfert und ein echtes Unikat aus unserer Werkstatt im Schwabenland.</em>
+                </p>
             </div>
 
             <!-- SERP snippet preview -->
             <div style="background:#f9f9f9;border:1px solid #e0e0e0;border-radius:6px;padding:.8rem 1rem">
                 <div style="font-size:.68rem;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem">SERP-Vorschau</div>
                 <div class="serp-title" style="color:#1a0dab;font-size:.95rem;line-height:1.3;margin-bottom:.15rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:580px">
-                    Keramik <?php echo esc_html($term->name); ?> – <?php echo esc_html($term->name); ?> | <?php echo esc_html($site_name); ?>
+                    <?php
+                    $ex_noun = trim(implode(' ', array_filter([$prefix, $term->name, $suffix])));
+                    echo esc_html($ex_noun) . ' – ' . esc_html($term->name) . ' | ' . esc_html($site_name);
+                    ?>
                 </div>
                 <div style="color:#006621;font-size:.78rem;margin-bottom:.25rem">
                     <?php echo esc_html($site_host); ?>/produkte/<?php echo esc_html(sanitize_title($term->name)); ?>/beispiel-produkt
                 </div>
                 <div class="serp-desc" style="color:#545454;font-size:.83rem;line-height:1.5">
-                    Keramik <?php echo esc_html($term->name); ?><?php echo $suffix ? ' – ' . esc_html(mb_substr($suffix, 0, 80)) : ''; ?>.
+                    <?php
+                    echo esc_html($ex_noun);
+                    if ($desc_sfx) echo ' – ' . esc_html(mb_substr($desc_sfx, 0, 80));
+                    echo '.';
+                    ?>
                 </div>
             </div>
 
@@ -315,22 +402,27 @@ function annyhase_seo_hub_tab_categories(): void {
     <script>
     (function(){
         document.querySelectorAll('.seo-cat-card').forEach(function(card){
-            var kw    = card.querySelector('.seo-kw-field');
-            var sfx   = card.querySelector('.seo-sfx-field');
-            var title = card.querySelector('.serp-title');
-            var desc  = card.querySelector('.serp-desc');
-            var site  = card.dataset.site || '';
-            var cat   = card.querySelector('h3').childNodes[0].nodeValue.trim();
+            var pfxEl  = card.querySelector('.an-prefix');
+            var sfxEl  = card.querySelector('.an-suffix');
+            var descEl = card.querySelector('.an-desc-sfx');
+            var title  = card.querySelector('.serp-title');
+            var desc   = card.querySelector('.serp-desc');
+            var site   = card.dataset.site || '';
+            var cat    = card.dataset.cat  || '';
 
             function refresh(){
-                var kwVal  = kw  ? kw.value.trim()  : '';
-                var sfxVal = sfx ? sfx.value.trim() : '';
-                var noun   = kwVal || ('Keramik ' + cat);
+                var pfx  = pfxEl  ? pfxEl.value.trim()  : '';
+                var sfx  = sfxEl  ? sfxEl.value.trim()  : '';
+                var dsfx = descEl ? descEl.value.trim()  : '';
+                var parts = [pfx, cat, sfx].filter(Boolean);
+                var noun  = parts.join(' ');
                 if (title) title.textContent = noun + ' – ' + cat + ' | ' + site;
-                if (desc)  desc.textContent  = 'Keramik ' + cat + (sfxVal ? ' – ' + sfxVal.substring(0, 80) : '') + '.';
+                if (desc)  desc.textContent  = noun + (dsfx ? ' – ' + dsfx.substring(0, 80) : '') + '.';
             }
-            if (kw)  kw.addEventListener('input',  refresh);
-            if (sfx) sfx.addEventListener('input', refresh);
+
+            [pfxEl, sfxEl, descEl].forEach(function(el){
+                if (el) el.addEventListener('input', refresh);
+            });
         });
     })();
     </script>

@@ -45,18 +45,32 @@ if (!defined('ANNYHASE_TAG_ADJECTIVES')) {
  * Derives a short, clean product title from Etsy listing tags.
  *
  * Picks the first tag that is not a pure adjective/process descriptor and
- * does not look like a use-case phrase (containing "für", occasion keywords
- * etc.). Prepends "Keramik" when the selected tag contains no ceramics term.
+ * does not look like a use-case phrase. When $post_id is given and the
+ * product has a kategorie with a configured prefix, the ceramics auto-prepend
+ * is suppressed entirely (an empty prefix means "no prefix wanted").
+ * Falls back to prepending "Keramik" only when no category config is found.
  *
- * @param string[] $tags Sanitized Etsy listing tags
- * @return string Clean product title, e.g. "Keramik Tasse", or empty string
+ * @param string[] $tags    Sanitized Etsy listing tags
+ * @param int      $post_id WP post ID for category prefix lookup (0 = skip)
+ * @return string Clean product noun, e.g. "Tasse" or "Kissen", or empty string
  */
-function etsy_sync_derive_clean_title(array $tags): string {
+function etsy_sync_derive_clean_title(array $tags, int $post_id = 0): string {
     if (empty($tags)) return '';
 
     $adjectives  = (array) (defined('ANNYHASE_TAG_ADJECTIVES') ? ANNYHASE_TAG_ADJECTIVES : []);
     $ceramics_re = '/\b(keramik|ceramic|ceramics|porzellan|porcelain|töpferei|pottery|tonware|steinzeug|stoneware)\b/iu';
     $occasion_re = '/\b(für|for|als|geburtstag|weihnacht|muttertag|ostern|hochzeit|jubiläum|valentins|anniversary|christmas|birthday|wedding)\b/iu';
+
+    // When a category with a configured prefix is found, never auto-prepend anything.
+    // Only fall back to ceramics detection when no category config exists at all.
+    $use_auto_pfx = true;
+    if ($post_id > 0 && function_exists('annyhase_get_category_seo_config')) {
+        $terms = get_the_terms($post_id, 'produktkategorie');
+        $term  = ($terms && !is_wp_error($terms)) ? $terms[0] : null;
+        if ($term) {
+            $use_auto_pfx = false;
+        }
+    }
 
     foreach ($tags as $tag) {
         $tag = trim((string) $tag);
@@ -65,7 +79,7 @@ function etsy_sync_derive_clean_title(array $tags): string {
         if (preg_match($occasion_re, $tag)) continue;
 
         $clean = ucfirst($tag);
-        if (!preg_match($ceramics_re, $clean)) {
+        if ($use_auto_pfx && !preg_match($ceramics_re, $clean)) {
             $clean = 'Keramik ' . $clean;
         }
         return mb_substr($clean, 0, 50);
@@ -73,7 +87,7 @@ function etsy_sync_derive_clean_title(array $tags): string {
 
     $first = ucfirst(trim((string) ($tags[0] ?? '')));
     if (!$first) return '';
-    if (!preg_match($ceramics_re, $first)) {
+    if ($use_auto_pfx && !preg_match($ceramics_re, $first)) {
         $first = 'Keramik ' . $first;
     }
     return mb_substr($first, 0, 50);
@@ -93,9 +107,10 @@ function etsy_sync_derive_clean_title(array $tags): string {
  *
  * @param int      $post_id WP post ID (used to read the category suffix)
  * @param string[] $tags    Sanitized Etsy listing tags
+ * @param array    $listing Raw Etsy listing array (used for processing_min/max)
  * @return string Meta description, or empty string when no tags are available
  */
-function etsy_sync_build_meta_description(int $post_id, array $tags): string {
+function etsy_sync_build_meta_description(int $post_id, array $tags, array $listing = []): string {
     if (empty($tags)) return '';
 
     $adjectives  = (array) (defined('ANNYHASE_TAG_ADJECTIVES') ? ANNYHASE_TAG_ADJECTIVES : []);
@@ -138,6 +153,12 @@ function etsy_sync_build_meta_description(int $post_id, array $tags): string {
         $parts[] = 'Ideal als ' . $group_b[0] . '.';
     }
 
+    $min = (int) ($listing['processing_min'] ?? get_post_meta($post_id, '_etsy_processing_min', true));
+    $max = (int) ($listing['processing_max'] ?? get_post_meta($post_id, '_etsy_processing_max', true));
+    if ($min > 0) {
+        $parts[] = ($max > $min) ? "Fertig in {$min}–{$max} Werktagen." : "Fertig in {$min} Werktagen.";
+    }
+
     $terms  = get_the_terms($post_id, 'produktkategorie');
     $term   = ($terms && !is_wp_error($terms)) ? $terms[0] : null;
     $suffix = $term ? trim((string) get_term_meta($term->term_id, '_annyhase_seo_desc', true)) : '';
@@ -155,6 +176,74 @@ function etsy_sync_build_meta_description(int $post_id, array $tags): string {
     }
 
     return $desc;
+}
+
+/**
+ * Strips §19 UStG Kleinunternehmer disclaimers and common Etsy boilerplate
+ * from imported listing descriptions so they don't appear on the website.
+ *
+ * @param string $desc Raw Etsy listing description (already sanitized)
+ * @return string Cleaned description
+ */
+function etsy_sync_filter_description(string $desc): string {
+    $patterns = [
+        // §19 UStG patterns — various phrasings
+        '/[\*\s]*gem[äa][ß]?\s*§\s*19\s*Ust[Gg][^.]*\.[^.]*\./ui',
+        '/[\*\s]*gem[äa][ß]?\s*§\s*19\s*Ust[Gg][^\n]*/ui',
+        '/[\*\s]*Gemäß §\s*19[^\n]*/ui',
+        '/[\*\s]*Kleinunternehmer[^\n]*/ui',
+        '/[\*\s]*Es wird keine Mehrwertsteuer[^\n]*/ui',
+        '/[\*\s]*kein Ausweis von Mehrwertsteuer[^\n]*/ui',
+        '/[\*\s]*keine Umsatzsteuer[^\n]*/ui',
+    ];
+    foreach ($patterns as $pattern) {
+        $desc = (string) preg_replace($pattern, '', $desc);
+    }
+    // Collapse multiple blank lines left by removed blocks
+    $desc = (string) preg_replace('/\n{3,}/', "\n\n", $desc);
+    return trim($desc);
+}
+
+/**
+ * Builds an SEO intro sentence from the per-category intro template.
+ *
+ * Reads _annyhase_intro_template from the product's primary produktkategorie
+ * term and substitutes {noun} with: [prefix] [clean_title] [suffix].
+ * The personalizable_sfx overrides suffix when is_personalizable = true.
+ *
+ * Requires the product's category to already be assigned (call after
+ * etsy_sync_set_product_term).
+ *
+ * @param int   $post_id WP post ID
+ * @param array $listing Raw Etsy listing array
+ * @return string Intro sentence, or empty string when no template is configured
+ */
+function etsy_sync_build_seo_intro(int $post_id, array $listing): string {
+    if (!function_exists('annyhase_get_category_seo_config')) return '';
+
+    $terms = get_the_terms($post_id, 'produktkategorie');
+    $term  = ($terms && !is_wp_error($terms)) ? $terms[0] : null;
+    if (!$term) return '';
+
+    $cfg      = annyhase_get_category_seo_config($term->term_id);
+    $template = trim($cfg['intro_template']);
+    if (!$template) return '';
+
+    $tags = array_values(array_filter(array_map('sanitize_text_field', $listing['tags'] ?? [])));
+    if (!$tags) {
+        $stored = (string) get_post_meta($post_id, '_etsy_tags', true);
+        $tags   = $stored ? array_values(array_filter(array_map('trim', explode(',', $stored)))) : [];
+    }
+
+    $clean = etsy_sync_derive_clean_title($tags, $post_id);
+    if (!$clean) return '';
+
+    $is_pers    = !empty($listing['is_personalizable']);
+    $suffix     = ($is_pers && $cfg['pers_sfx']) ? $cfg['pers_sfx'] : $cfg['suffix'];
+    $noun_parts = array_filter([$cfg['prefix'], $clean, $suffix]);
+    $noun       = implode(' ', $noun_parts);
+
+    return str_replace('{noun}', $noun, $template);
 }
 
 /* =================================================================
@@ -1098,24 +1187,42 @@ function etsy_sync_auto_yoast_meta(int $post_id, array $listing = []): void {
         $tags   = $stored ? array_values(array_filter(array_map('trim', explode(',', $stored)))) : [];
     }
 
-    $clean_title = etsy_sync_derive_clean_title($tags);
+    $clean_title = etsy_sync_derive_clean_title($tags, $post_id);
+
+    // Load per-category config (prefix, suffix, focuskw_addon, pers_sfx)
+    $cfg = [];
+    if (function_exists('annyhase_get_category_seo_config')) {
+        $terms = get_the_terms($post_id, 'produktkategorie');
+        $term  = ($terms && !is_wp_error($terms)) ? $terms[0] : null;
+        if ($term) {
+            $cfg = annyhase_get_category_seo_config($term->term_id);
+        }
+    }
 
     if ($clean_title) {
         update_post_meta($post_id, '_annyhase_clean_title', $clean_title);
-        // Yoast still resolves %%produkt_kat%% and %%sitename%% at render time.
-        update_post_meta($post_id, '_yoast_wpseo_title', $clean_title . ' – %%produkt_kat%% | %%sitename%%');
+
+        $is_pers    = !empty($listing['is_personalizable']);
+        $suffix     = ($is_pers && !empty($cfg['pers_sfx'])) ? $cfg['pers_sfx'] : ($cfg['suffix'] ?? '');
+        $title_parts = array_filter([$cfg['prefix'] ?? '', $clean_title, $suffix]);
+        $seo_title   = implode(' ', $title_parts);
+        // Yoast resolves %%produkt_kat%% and %%sitename%% at render time.
+        update_post_meta($post_id, '_yoast_wpseo_title', $seo_title . ' – %%produkt_kat%% | %%sitename%%');
     } else {
         delete_post_meta($post_id, '_annyhase_clean_title');
         delete_post_meta($post_id, '_yoast_wpseo_title');
     }
 
-    $cat_kw  = annyhase_build_yoast_fields($post_id)['focuskw'];
-    $focuskw = $clean_title ? trim($clean_title . ' handgetöpfert') : $cat_kw;
+    $cat_kw      = annyhase_build_yoast_fields($post_id)['focuskw'];
+    $focuskw_add = $cfg['focuskw_addon'] ?? '';
+    $focuskw     = $clean_title
+        ? trim($clean_title . ($focuskw_add ? ' ' . $focuskw_add : ''))
+        : $cat_kw;
     if ($focuskw) {
         update_post_meta($post_id, '_yoast_wpseo_focuskw', $focuskw);
     }
 
-    $meta_desc = etsy_sync_build_meta_description($post_id, $tags);
+    $meta_desc = etsy_sync_build_meta_description($post_id, $tags, $listing);
     if ($meta_desc) {
         update_post_meta($post_id, '_yoast_wpseo_metadesc', $meta_desc);
     } else {
@@ -1190,6 +1297,38 @@ function etsy_sync_save_extra_meta(int $post_id, array $listing): void {
     if ($favorers > 0) {
         update_post_meta($post_id, '_etsy_favorers', $favorers);
     }
+
+    // Personalisation
+    update_post_meta($post_id, '_etsy_personalizable', !empty($listing['is_personalizable']) ? '1' : '0');
+    $pers_instr = sanitize_textarea_field($listing['personalization_instructions'] ?? '');
+    if ($pers_instr) {
+        update_post_meta($post_id, '_etsy_personalization_instructions', $pers_instr);
+    } else {
+        delete_post_meta($post_id, '_etsy_personalization_instructions');
+    }
+
+    // Processing time (production days before shipping)
+    $proc_min = (int) ($listing['processing_min'] ?? 0);
+    $proc_max = (int) ($listing['processing_max'] ?? 0);
+    if ($proc_min > 0) {
+        update_post_meta($post_id, '_etsy_processing_min', $proc_min);
+        update_post_meta($post_id, '_etsy_processing_max', max($proc_min, $proc_max));
+    } else {
+        delete_post_meta($post_id, '_etsy_processing_min');
+        delete_post_meta($post_id, '_etsy_processing_max');
+    }
+
+    // Materials (Etsy sends an array)
+    $materials = array_values(array_filter(array_map('sanitize_text_field', $listing['materials'] ?? [])));
+    if ($materials) {
+        update_post_meta($post_id, '_etsy_materials', implode(', ', $materials));
+    } else {
+        delete_post_meta($post_id, '_etsy_materials');
+    }
+
+    // Current stock quantity
+    $qty = (int) ($listing['quantity'] ?? 0);
+    update_post_meta($post_id, '_etsy_quantity', $qty);
 }
 
 /**
@@ -1232,6 +1371,11 @@ function etsy_sync_import_listing_media(int $post_id, array $listing, bool $forc
         }
 
         update_post_meta($att_id, '_etsy_product_media', '1');
+
+        // Use Etsy's alt_text if provided; fall back to the product title.
+        $alt = sanitize_text_field($img['alt_text'] ?? '');
+        update_post_meta($att_id, '_wp_attachment_image_alt', $alt ?: $title);
+
         $counts['images_ok']++;
 
         if ($idx === 0) {
@@ -1345,7 +1489,7 @@ function etsy_sync_products(bool $update_existing = false): array {
         foreach ($listings as $listing) {
             $listing_id = (int)    ($listing['listing_id']      ?? 0);
             $title      = sanitize_text_field($listing['title'] ?? '');
-            $desc       = sanitize_textarea_field($listing['description'] ?? '');
+            $desc       = etsy_sync_filter_description(sanitize_textarea_field($listing['description'] ?? ''));
             $etsy_url   = esc_url_raw($listing['url']            ?? '');
             $section_id = (int)    ($listing['shop_section_id'] ?? 0);
 
@@ -1374,8 +1518,14 @@ function etsy_sync_products(bool $update_existing = false): array {
                     if ($price_str) update_post_meta($post_id, '_produkt_preis', $price_str);
                     if ($etsy_url)  update_post_meta($post_id, '_etsy_url',      $etsy_url);
                     etsy_sync_set_product_term($post_id, $section_id, $sections);
-                    etsy_sync_auto_yoast_meta($post_id, $listing);
                     etsy_sync_save_extra_meta($post_id, $listing);
+                    etsy_sync_auto_yoast_meta($post_id, $listing);
+                    $intro = etsy_sync_build_seo_intro($post_id, $listing);
+                    if ($intro) {
+                        wp_update_post(['ID' => $post_id,
+                            'post_content' => $intro . "\n\n" . $desc,
+                            'post_excerpt' => etsy_sync_build_excerpt($desc)]);
+                    }
                     $result['updated']++;
                 }
                 if (!get_post_thumbnail_id($post_id)) {
@@ -1393,8 +1543,14 @@ function etsy_sync_products(bool $update_existing = false): array {
                 if ($price_str) update_post_meta($post_id, '_produkt_preis', $price_str);
                 if ($etsy_url)  update_post_meta($post_id, '_etsy_url',      $etsy_url);
                 etsy_sync_set_product_term($post_id, $section_id, $sections);
-                etsy_sync_auto_yoast_meta($post_id, $listing);
                 etsy_sync_save_extra_meta($post_id, $listing);
+                etsy_sync_auto_yoast_meta($post_id, $listing);
+                $intro = etsy_sync_build_seo_intro($post_id, $listing);
+                if ($intro) {
+                    wp_update_post(['ID' => $post_id,
+                        'post_content' => $intro . "\n\n" . $desc,
+                        'post_excerpt' => etsy_sync_build_excerpt($desc)]);
+                }
                 $mc = etsy_sync_import_listing_media($post_id, $listing, false);
                 $result['images_ok']  += $mc['images_ok'];
                 $result['images_err'] += $mc['images_err'];
@@ -1508,7 +1664,7 @@ add_action('wp_ajax_etsy_sync_products_batch', function (): void {
     foreach ($listings as $listing) {
         $listing_id = (int)    ($listing['listing_id']      ?? 0);
         $title      = sanitize_text_field($listing['title'] ?? '');
-        $desc       = sanitize_textarea_field($listing['description'] ?? '');
+        $desc       = etsy_sync_filter_description(sanitize_textarea_field($listing['description'] ?? ''));
         $etsy_url   = esc_url_raw($listing['url']            ?? '');
         $section_id = (int)    ($listing['shop_section_id'] ?? 0);
 
@@ -1533,25 +1689,39 @@ add_action('wp_ajax_etsy_sync_products_batch', function (): void {
             $post_id = $existing[0];
             if ($update_existing) {
                 wp_update_post(['ID' => $post_id, 'post_title' => $title,
-                    'post_content' => $desc, 'post_status' => 'publish']);
+                    'post_content' => $desc, 'post_excerpt' => etsy_sync_build_excerpt($desc),
+                    'post_status' => 'publish']);
                 if ($price_str) update_post_meta($post_id, '_produkt_preis', $price_str);
                 if ($etsy_url)  update_post_meta($post_id, '_etsy_url',      $etsy_url);
                 etsy_sync_set_product_term($post_id, $section_id, $sections);
-                etsy_sync_auto_yoast_meta($post_id, $listing);
                 etsy_sync_save_extra_meta($post_id, $listing);
+                etsy_sync_auto_yoast_meta($post_id, $listing);
+                $intro = etsy_sync_build_seo_intro($post_id, $listing);
+                if ($intro) {
+                    wp_update_post(['ID' => $post_id,
+                        'post_content' => $intro . "\n\n" . $desc,
+                        'post_excerpt' => etsy_sync_build_excerpt($desc)]);
+                }
                 $updated++;
             }
         } else {
             $post_id = wp_insert_post(['post_type' => 'produkt', 'post_title' => $title,
-                'post_content' => $desc, 'post_status' => 'publish']);
+                'post_content' => $desc, 'post_excerpt' => etsy_sync_build_excerpt($desc),
+                'post_status' => 'publish']);
             if ($post_id && !is_wp_error($post_id)) {
                 update_post_meta($post_id, '_etsy_listing_id', $listing_id);
                 update_post_meta($post_id, '_is_etsy_produkt',  '1');
                 if ($price_str) update_post_meta($post_id, '_produkt_preis', $price_str);
                 if ($etsy_url)  update_post_meta($post_id, '_etsy_url',      $etsy_url);
                 etsy_sync_set_product_term($post_id, $section_id, $sections);
-                etsy_sync_auto_yoast_meta($post_id, $listing);
                 etsy_sync_save_extra_meta($post_id, $listing);
+                etsy_sync_auto_yoast_meta($post_id, $listing);
+                $intro = etsy_sync_build_seo_intro($post_id, $listing);
+                if ($intro) {
+                    wp_update_post(['ID' => $post_id,
+                        'post_content' => $intro . "\n\n" . $desc,
+                        'post_excerpt' => etsy_sync_build_excerpt($desc)]);
+                }
                 $new++;
             }
         }

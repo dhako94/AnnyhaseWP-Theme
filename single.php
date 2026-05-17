@@ -183,6 +183,52 @@ $has_multi = count($gallery_items) > 1;
                 </div>
                 <?php endif; ?>
 
+                <!-- Product specs: delivery time, materials, personalisation -->
+                <?php
+                $spec_proc_min = (int) get_post_meta($post_id, '_etsy_processing_min', true);
+                $spec_proc_max = (int) get_post_meta($post_id, '_etsy_processing_max', true);
+                $spec_mat      = (string) get_post_meta($post_id, '_etsy_materials', true);
+                $spec_pers     = get_post_meta($post_id, '_etsy_personalizable', true);
+                $spec_pers_txt = (string) get_post_meta($post_id, '_etsy_personalization_instructions', true);
+
+                $has_specs = ($spec_proc_min > 0) || $spec_mat || ($spec_pers === '1');
+                if ($has_specs):
+                ?>
+                <div class="product-specs">
+                    <?php if ($spec_proc_min > 0): ?>
+                    <div class="product-specs__row">
+                        <span class="product-specs__icon">⏱</span>
+                        <span class="product-specs__label">Lieferzeit:</span>
+                        <span class="product-specs__value">
+                            <?php
+                            if ($spec_proc_max > $spec_proc_min) {
+                                echo esc_html("Fertig in {$spec_proc_min}–{$spec_proc_max} Werktagen");
+                            } else {
+                                echo esc_html("Fertig in {$spec_proc_min} Werktagen");
+                            }
+                            ?>
+                        </span>
+                    </div>
+                    <?php endif; ?>
+                    <?php if ($spec_mat): ?>
+                    <div class="product-specs__row">
+                        <span class="product-specs__icon">🧱</span>
+                        <span class="product-specs__label">Material:</span>
+                        <span class="product-specs__value"><?php echo esc_html($spec_mat); ?></span>
+                    </div>
+                    <?php endif; ?>
+                    <?php if ($spec_pers === '1'): ?>
+                    <div class="product-specs__row">
+                        <span class="product-specs__icon">✏️</span>
+                        <span class="product-specs__label">Personalisierung:</span>
+                        <span class="product-specs__value">
+                            <?php echo $spec_pers_txt ? esc_html($spec_pers_txt) : esc_html__('Auf Anfrage möglich', 'annyhase'); ?>
+                        </span>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
+
                 <!-- Details: handmade + shipping -->
                 <?php
                 $d1_icon = get_theme_mod('annyhase_detail_row1_icon', '🤲');
