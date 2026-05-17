@@ -179,15 +179,23 @@ function etsy_sync_build_meta_description(int $post_id, array $tags, array $list
 }
 
 /**
- * Strips §19 UStG Kleinunternehmer disclaimers and common Etsy boilerplate
- * from imported listing descriptions so they don't appear on the website.
+ * Strips §19 UStG Kleinunternehmer disclaimers and custom boilerplate from
+ * imported listing descriptions. Respects the on/off toggle and custom
+ * filter strings configured in SEO Hub → Yoast Einrichtung.
+ *
+ * Built-in patterns use regex; custom entries are plain case-insensitive
+ * substring matches (full line containing the substring is removed).
  *
  * @param string $desc Raw Etsy listing description (already sanitized)
- * @return string Cleaned description
+ * @return string Cleaned description, or original when filter is disabled
  */
 function etsy_sync_filter_description(string $desc): string {
+    if (get_option('annyhase_desc_filter_enabled', '1') === '0') {
+        return $desc;
+    }
+
+    // Built-in §19 UStG patterns
     $patterns = [
-        // §19 UStG patterns — various phrasings
         '/[\*\s]*gem[äa][ß]?\s*§\s*19\s*Ust[Gg][^.]*\.[^.]*\./ui',
         '/[\*\s]*gem[äa][ß]?\s*§\s*19\s*Ust[Gg][^\n]*/ui',
         '/[\*\s]*Gemäß §\s*19[^\n]*/ui',
@@ -199,6 +207,18 @@ function etsy_sync_filter_description(string $desc): string {
     foreach ($patterns as $pattern) {
         $desc = (string) preg_replace($pattern, '', $desc);
     }
+
+    // Custom substring entries: remove any line containing the phrase
+    $custom_raw = (string) get_option('annyhase_desc_filter_custom', '');
+    if ($custom_raw) {
+        $lines = array_filter(array_map('trim', explode("\n", $custom_raw)));
+        foreach ($lines as $phrase) {
+            if ($phrase === '') continue;
+            $quoted  = preg_quote($phrase, '/');
+            $desc    = (string) preg_replace('/[^\n]*' . $quoted . '[^\n]*/iu', '', $desc);
+        }
+    }
+
     // Collapse multiple blank lines left by removed blocks
     $desc = (string) preg_replace('/\n{3,}/', "\n\n", $desc);
     return trim($desc);

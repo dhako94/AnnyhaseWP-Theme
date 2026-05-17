@@ -52,6 +52,25 @@ add_action('wp_ajax_annyhase_apply_yoast_config', function (): void {
 });
 
 /* =================================================================
+   admin_post – save sync/filter settings
+   ================================================================= */
+
+add_action('admin_post_annyhase_save_sync_settings', function (): void {
+    check_admin_referer('annyhase_save_sync_settings');
+    if (!current_user_can('manage_options')) wp_die('Unauthorized');
+
+    update_option('annyhase_desc_filter_enabled', !empty($_POST['desc_filter_enabled']) ? '1' : '0');
+    $custom = sanitize_textarea_field(wp_unslash($_POST['desc_filter_custom'] ?? ''));
+    update_option('annyhase_desc_filter_custom', $custom);
+
+    wp_safe_redirect(add_query_arg(
+        ['page' => 'annyhase-seo-hub', 'tab' => 'yoast', 'saved' => '1'],
+        admin_url('admin.php')
+    ));
+    exit;
+});
+
+/* =================================================================
    admin_post – save all category SEO fields at once
    ================================================================= */
 
@@ -236,6 +255,63 @@ function annyhase_seo_hub_tab_yoast(): void {
     </script>
 
     <?php endif; ?>
+
+    <!-- Description Filter Settings -->
+    <?php
+    $filter_on     = get_option('annyhase_desc_filter_enabled', '1') !== '0';
+    $filter_custom = (string) get_option('annyhase_desc_filter_custom', '');
+    $builtin = [
+        'gem. §19 UStG …',
+        'Gemäß §19 …',
+        'Kleinunternehmer …',
+        'Es wird keine Mehrwertsteuer …',
+        'kein Ausweis von Mehrwertsteuer …',
+        'keine Umsatzsteuer …',
+    ];
+    ?>
+    <div style="background:#fff;border:1px solid #e2e4e7;border-radius:8px;padding:1.25rem;margin-top:1.25rem">
+        <h3 style="margin-top:0;font-size:.95rem;font-weight:700">Beschreibungs-Filter (§19 UStG &amp; Boilerplate)</h3>
+        <p style="font-size:.85rem;color:#555;margin-bottom:1rem">
+            Entfernt automatisch rechtliche Pflichthinweise und Boilerplate aus importierten Etsy-Beschreibungen,
+            bevor der Text auf der Website gespeichert wird.
+            Eigene Texte werden als einfache Substring-Suche (kein Regex) angewendet.
+        </p>
+        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+            <?php wp_nonce_field('annyhase_save_sync_settings'); ?>
+            <input type="hidden" name="action" value="annyhase_save_sync_settings">
+
+            <label style="display:flex;align-items:center;gap:.5rem;font-size:.9rem;margin-bottom:1rem;cursor:pointer">
+                <input type="checkbox" name="desc_filter_enabled" value="1" <?php checked($filter_on); ?>>
+                <strong>Filter aktiv</strong>
+                <span style="color:#888;font-size:.82rem">(deaktivieren um Rohtexte von Etsy unverändert zu übernehmen)</span>
+            </label>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+                <div>
+                    <p style="font-size:.83rem;font-weight:600;margin:0 0 .4rem">Eingebaute Muster (immer aktiv wenn Filter an):</p>
+                    <ul style="margin:0;padding-left:1.2rem;font-size:.82rem;color:#555;line-height:1.9">
+                        <?php foreach ($builtin as $b): ?>
+                        <li><code><?php echo esc_html($b); ?></code></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+                <div>
+                    <label for="desc_filter_custom" style="display:block;font-size:.83rem;font-weight:600;margin-bottom:.25rem">
+                        Eigene Filter-Texte (einer pro Zeile):
+                    </label>
+                    <textarea id="desc_filter_custom" name="desc_filter_custom"
+                              rows="7" style="width:100%;resize:vertical;font-family:monospace;font-size:.82rem"><?php echo esc_textarea($filter_custom); ?></textarea>
+                    <p style="font-size:.72rem;color:#888;margin:.25rem 0 0">
+                        Jede Zeile wird als exakter Textblock gesucht und entfernt. Groß-/Kleinschreibung wird ignoriert.
+                    </p>
+                </div>
+            </div>
+
+            <?php submit_button('Filter-Einstellungen speichern', 'secondary', 'submit', false,
+                ['style' => 'font-size:.9rem']); ?>
+        </form>
+    </div>
+
     </div>
     <?php
 }
