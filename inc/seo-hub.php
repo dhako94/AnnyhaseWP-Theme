@@ -39,13 +39,15 @@ add_action('wp_ajax_annyhase_apply_yoast_config', function (): void {
 
     $titles = get_option('wpseo_titles', []);
     $titles['title-home-wpseo']              = '%%sitename%% – %%sitedesc%%';
-    $titles['title-post']                    = '%%title%% | %%sitename%%';
     $titles['title-page']                    = '%%title%% | %%sitename%%';
     $titles['title-produkt']                 = '%%short_title%% – %%produkt_kat%% | %%sitename%%';
     $titles['metadesc-produkt']              = '';
     $titles['title-ptarchive-produkt']       = 'Handgemachte Produkte | %%sitename%%';
     $titles['title-tax-produktkategorie']    = '%%term_title%% – Handgemacht | %%sitename%%';
     $titles['metadesc-tax-produktkategorie'] = '%%term_description%%';
+    $titles['noindex-post']                  = '1';
+    $titles['noindex-tax-category']          = '1';
+    $titles['noindex-tax-post_tag']          = '1';
     $titles['noindex-author-wpseo']          = '1';
     $titles['noindex-date-wpseo']            = '1';
     $titles['breadcrumbs-enable']            = '1';
@@ -169,19 +171,21 @@ function annyhase_seo_hub_tab_yoast(): void {
 
     // [label, opt-group ('titles'|'main'), option key, raw recommended, human display (null=show as code), why explanation]
     $rows = [
-        ['Homepage – Titel',           'titles', 'title-home-wpseo',              '%%sitename%% – %%sitedesc%%',                       null, ''],
-        ['Beiträge – Titel',           'titles', 'title-post',                    '%%title%% | %%sitename%%',                          null, ''],
-        ['Seiten – Titel',             'titles', 'title-page',                    '%%title%% | %%sitename%%',                          null, ''],
-        ['Produkt-Archiv – Titel',     'titles', 'title-ptarchive-produkt',       'Handgemachte Produkte | %%sitename%%',               null, ''],
-        ['Produkt – Titel',            'titles', 'title-produkt',                 '%%short_title%% – %%produkt_kat%% | %%sitename%%',  null, ''],
-        ['Produkt – Meta Desc',        'titles', 'metadesc-produkt',              '',                                                   null, ''],
-        ['Kategorie – Titel',          'titles', 'title-tax-produktkategorie',    '%%term_title%% – Handgemacht | %%sitename%%',        null, ''],
-        ['Kategorie – Meta Desc',      'titles', 'metadesc-tax-produktkategorie', '%%term_description%%',                               null, ''],
-        ['Autor-Archive deaktivieren', 'titles', 'noindex-author-wpseo',          '1', 'Aktiviert', 'Bei einem Einzel-Autoren-Shop doppeln Autor-Archive den gesamten Content — Google wertet das als Duplicate Content.'],
-        ['Datum-Archive deaktivieren', 'titles', 'noindex-date-wpseo',            '1', 'Aktiviert', 'Monats-/Jahresarchive haben für einen Shop keinen Mehrwert und werden von Google als Thin Content eingestuft.'],
-        ['Breadcrumbs aktivieren',     'titles', 'breadcrumbs-enable',            '1', 'Aktiviert', 'Breadcrumbs erscheinen in Google-SERPs als „Shop › Kategorie › Produkt"-Pfad und verbessern die Klickrate.'],
-        ['Open Graph Tags (FB / OG)',  'main',   'opengraph',                     '1', 'Aktiviert', 'Ohne OG-Tags zeigt Facebook, Instagram & Pinterest beim Teilen kein Bild und keinen Titel — sieht unprofessionell aus.'],
-        ['Twitter/X Cards',            'main',   'twitter',                       '1', 'Aktiviert', 'Twitter/X wertet eigene Card-Tags aus (nicht OG). Ohne sie gibt es beim Teilen auf X keine Linkvorschau.'],
+        ['Homepage – Titel',                   'titles', 'title-home-wpseo',              '%%sitename%% – %%sitedesc%%',                       null,        ''],
+        ['Seiten – Titel',                     'titles', 'title-page',                    '%%title%% | %%sitename%%',                          null,        ''],
+        ['Produkt-Archiv – Titel',             'titles', 'title-ptarchive-produkt',       'Handgemachte Produkte | %%sitename%%',               null,        ''],
+        ['Produkt – Titel',                    'titles', 'title-produkt',                 '%%short_title%% – %%produkt_kat%% | %%sitename%%',  null,        ''],
+        ['Produkt – Meta Desc',                'titles', 'metadesc-produkt',              '',                                                   null,        ''],
+        ['Kategorie – Titel',                  'titles', 'title-tax-produktkategorie',    '%%term_title%% – Handgemacht | %%sitename%%',        null,        ''],
+        ['Kategorie – Meta Desc',              'titles', 'metadesc-tax-produktkategorie', '%%term_description%%',                               null,        ''],
+        ['Beiträge – noindex (nicht genutzt)', 'titles', 'noindex-post',                  '1', 'Aktiviert', 'Du verwendest keine Blog-Beiträge. noindex verhindert, dass leere oder dünne Post-Seiten im Index landen.'],
+        ['WP-Kategorien – noindex',            'titles', 'noindex-tax-category',          '1', 'Aktiviert', 'Standard-WP-Kategorien werden nicht genutzt — noindex verhindert leere Archivseiten im Google-Index.'],
+        ['Schlagwörter – noindex',             'titles', 'noindex-tax-post_tag',          '1', 'Aktiviert', 'Etsy-Tags werden als WP-Schlagwörter gespeichert, sollen aber nicht als eigene indexierte Seiten erscheinen.'],
+        ['Autor-Archive – noindex',            'titles', 'noindex-author-wpseo',          '1', 'Aktiviert', 'Bei einem Einzel-Autoren-Shop doppeln Autor-Archive den gesamten Content — Google wertet das als Duplicate Content.'],
+        ['Datum-Archive – noindex',            'titles', 'noindex-date-wpseo',            '1', 'Aktiviert', 'Monats-/Jahresarchive haben keinen Mehrwert für einen Shop und werden von Google als Thin Content eingestuft.'],
+        ['Breadcrumbs aktivieren',             'titles', 'breadcrumbs-enable',            '1', 'Aktiviert', 'Breadcrumbs erscheinen in Google-SERPs als „Shop › Kategorie › Produkt"-Pfad und verbessern die Klickrate.'],
+        ['Open Graph Tags (FB / OG)',          'main',   'opengraph',                     '1', 'Aktiviert', 'Ohne OG-Tags zeigt Facebook, Instagram & Pinterest beim Teilen kein Bild und keinen Titel — sieht unprofessionell aus.'],
+        ['Twitter/X Cards',                    'main',   'twitter',                       '1', 'Aktiviert', 'Twitter/X wertet eigene Card-Tags aus (nicht OG). Ohne sie gibt es beim Teilen auf X keine Linkvorschau.'],
     ];
     ?>
     <div style="max-width:960px">
@@ -896,96 +900,187 @@ function annyhase_seo_hub_tab_diagnostics(): void {
         return;
     }
 
-    $total      = count($products);
-    $cnt_ct     = 0;
-    $cnt_fkw    = 0;
-    $cnt_md     = 0;
-    $cnt_cat    = 0;
-    $cnt_price  = 0;
-
+    $total     = count($products);
+    $cnt_ct    = $cnt_fkw = $cnt_md = $cnt_cat = $cnt_price = $cnt_intro = 0;
     foreach ($products as $p) {
         if (get_post_meta($p->ID, '_annyhase_clean_title',  true)) $cnt_ct++;
         if (get_post_meta($p->ID, '_yoast_wpseo_focuskw',  true)) $cnt_fkw++;
         if (get_post_meta($p->ID, '_yoast_wpseo_metadesc', true)) $cnt_md++;
-        $cat_check = get_the_terms($p->ID, 'produktkategorie');
-        if ($cat_check && !is_wp_error($cat_check))                $cnt_cat++;
-        if (get_post_meta($p->ID, '_produkt_preis',         true)) $cnt_price++;
+        $cc = get_the_terms($p->ID, 'produktkategorie');
+        if ($cc && !is_wp_error($cc)) $cnt_cat++;
+        if (get_post_meta($p->ID, '_produkt_preis', true)) $cnt_price++;
+        if ($p->post_content && mb_strlen(wp_strip_all_tags($p->post_content)) > 20) $cnt_intro++;
     }
 
-    $dot = static function (bool $ok): string {
-        $c = $ok ? '#22c55e' : '#ef4444';
-        return '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' . $c . '"></span>';
-    };
-
-    $pct_bar = static function (int $ok, int $total): string {
-        $pct = $total ? (int) round($ok / $total * 100) : 0;
+    $pct_bar = static function (int $ok, int $tot): string {
+        $pct = $tot ? (int) round($ok / $tot * 100) : 0;
         $c   = $pct >= 100 ? '#22c55e' : ($pct >= 50 ? '#f59e0b' : '#ef4444');
         return '<div style="background:#e5e7eb;border-radius:4px;height:5px;margin-top:3px;overflow:hidden">'
-            . '<div style="background:' . $c . ';height:100%;width:' . $pct . '%"></div></div>';
+             . '<div style="background:' . $c . ';height:100%;width:' . $pct . '%"></div></div>';
+    };
+
+    $dot = static function (bool $ok, string $title = ''): string {
+        $c = $ok ? '#22c55e' : '#ef4444';
+        $t = $title ? ' title="' . esc_attr($title) . '"' : '';
+        return '<span' . $t . ' style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' . $c . '"></span>';
+    };
+
+    $site_name = get_bloginfo('name');
+
+    // Clean title derivation source → badge config
+    $source_cfg = [
+        'override'      => ['Manuell',         '#c2410c', '#fff7ed', '#fed7aa'],
+        'title_match'   => ['Titel-Match',      '#1d4ed8', '#eff6ff', '#bfdbfe'],
+        'tag_first'     => ['Tag',              '#166534', '#f0fdf4', '#bbf7d0'],
+        'title_extract' => ['Aus Etsy-Titel',   '#374151', '#f3f4f6', '#e5e7eb'],
+        'tag_fallback'  => ['Fallback',         '#92400e', '#fffbeb', '#fde68a'],
+    ];
+    $badge = static function (string $src) use ($source_cfg): string {
+        if (!$src || !isset($source_cfg[$src])) return '';
+        [$label, $text, $bg, $border] = $source_cfg[$src];
+        return '<span style="font-size:.65rem;font-weight:600;padding:1px 5px;border-radius:3px;border:1px solid '
+            . esc_attr($border) . ';background:' . esc_attr($bg) . ';color:' . esc_attr($text) . ';white-space:nowrap">'
+            . esc_html($label) . '</span>';
+    };
+
+    // Approximate %%short_title%% — mirrors the registered Yoast variable
+    $short_title = static function (string $t): string {
+        $max = 40;
+        if (mb_strlen($t) <= $max) return $t;
+        $pos = strrpos(mb_substr($t, 0, $max), ' ');
+        return ($pos !== false ? mb_substr($t, 0, $pos) : mb_substr($t, 0, $max)) . '…';
     };
     ?>
-    <div style="max-width:1100px">
+    <div style="max-width:1260px">
 
-    <!-- Coverage summary -->
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:.75rem;margin-bottom:1.5rem">
+    <!-- Coverage tiles -->
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:.6rem;margin-bottom:1.25rem">
         <?php
-        $summary = [
-            ['Clean Title',  $cnt_ct,    $total],
-            ['Focus KW',     $cnt_fkw,   $total],
-            ['Meta Desc',    $cnt_md,    $total],
-            ['Kategorie',    $cnt_cat,   $total],
-            ['Preis',        $cnt_price, $total],
-        ];
-        foreach ($summary as [$label, $ok, $tot]):
+        foreach ([
+            ['Clean Title',   $cnt_ct,    $total],
+            ['Focus KW',      $cnt_fkw,   $total],
+            ['Meta Desc',     $cnt_md,    $total],
+            ['Beschreibung',  $cnt_intro, $total],
+            ['Kategorie',     $cnt_cat,   $total],
+            ['Preis',         $cnt_price, $total],
+        ] as [$label, $ok, $tot]):
             $pct = $tot ? (int) round($ok / $tot * 100) : 0;
             $col = $pct >= 100 ? '#22c55e' : ($pct >= 50 ? '#f59e0b' : '#ef4444');
         ?>
-        <div style="background:#fff;border:1px solid #e2e4e7;border-radius:8px;padding:.85rem 1rem;text-align:center">
-            <div style="font-size:1.55rem;font-weight:700;color:<?php echo esc_attr($col); ?>"><?php echo esc_html($pct); ?>%</div>
-            <div style="font-size:.78rem;color:#555;margin:.15rem 0 .1rem;font-weight:600"><?php echo esc_html($label); ?></div>
-            <div style="font-size:.72rem;color:#999"><?php echo esc_html($ok); ?>/<?php echo esc_html($tot); ?></div>
-            <?php echo $pct_bar($ok, $tot); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+        <div style="background:#fff;border:1px solid #e2e4e7;border-radius:8px;padding:.75rem;text-align:center">
+            <div style="font-size:1.4rem;font-weight:700;color:<?php echo esc_attr($col); ?>"><?php echo esc_html($pct); ?>%</div>
+            <div style="font-size:.73rem;color:#555;margin:.12rem 0 .08rem;font-weight:600"><?php echo esc_html($label); ?></div>
+            <div style="font-size:.68rem;color:#999"><?php echo esc_html($ok); ?>/<?php echo esc_html($tot); ?></div>
+            <?php echo $pct_bar($ok, $tot); // phpcs:ignore ?>
         </div>
         <?php endforeach; ?>
     </div>
 
+    <!-- Source legend -->
+    <div style="background:#fff;border:1px solid #e2e4e7;border-radius:6px;padding:.45rem .8rem;margin-bottom:.8rem;font-size:.74rem;color:#666;display:flex;flex-wrap:wrap;gap:.4rem .8rem;align-items:center">
+        <strong>Quelle Clean Title:</strong>
+        <?php foreach ($source_cfg as [$label, $text, $bg, $border]): ?>
+        <span style="background:<?php echo esc_attr($bg); ?>;color:<?php echo esc_attr($text); ?>;border:1px solid <?php echo esc_attr($border); ?>;padding:1px 6px;border-radius:3px;font-size:.66rem;font-weight:600"><?php echo esc_html($label); ?></span>
+        <?php endforeach; ?>
+        <span style="color:#bbb;margin-left:.3rem">Zeile anklicken = alle generierten Texte aufklappen</span>
+    </div>
+
     <!-- Per-product table -->
-    <table class="wp-list-table widefat fixed striped" style="font-size:.82rem">
+    <table class="wp-list-table widefat" style="font-size:.81rem">
         <thead>
             <tr>
-                <th style="width:190px">Produkt</th>
+                <th style="width:195px">Produkt</th>
                 <th style="width:150px">Clean Title</th>
-                <th style="width:165px">Focus KW</th>
+                <th style="width:230px">Yoast SEO-Titel (Vorschau)</th>
+                <th style="width:180px">Focus Keyphrase</th>
                 <th>Meta Description</th>
-                <th style="width:50px;text-align:center">Kat</th>
-                <th style="width:50px;text-align:center">€</th>
-                <th style="width:50px;text-align:center">Sync</th>
+                <th style="width:65px;text-align:center">Status</th>
             </tr>
         </thead>
         <tbody>
         <?php foreach ($products as $p):
-            $clean    = (string) get_post_meta($p->ID, '_annyhase_clean_title',  true);
-            $focuskw  = (string) get_post_meta($p->ID, '_yoast_wpseo_focuskw',  true);
-            $metadesc = (string) get_post_meta($p->ID, '_yoast_wpseo_metadesc', true);
-            $price    = (string) get_post_meta($p->ID, '_produkt_preis',        true);
-            $is_etsy  = (string) get_post_meta($p->ID, '_is_etsy_produkt',      true);
+            $clean    = (string) get_post_meta($p->ID, '_annyhase_clean_title',        true);
+            $ct_src   = (string) get_post_meta($p->ID, '_annyhase_clean_title_source', true);
+            $focuskw  = (string) get_post_meta($p->ID, '_yoast_wpseo_focuskw',        true);
+            $metadesc = (string) get_post_meta($p->ID, '_yoast_wpseo_metadesc',       true);
+            $price    = (string) get_post_meta($p->ID, '_produkt_preis',              true);
+            $is_etsy  = (string) get_post_meta($p->ID, '_is_etsy_produkt',            true);
             $cats     = get_the_terms($p->ID, 'produktkategorie');
             $cat_name = ($cats && !is_wp_error($cats)) ? $cats[0]->name : '';
+
+            $yoast_title = $short_title($p->post_title) . ($cat_name ? ' – ' . $cat_name : '') . ' | ' . $site_name;
+
+            // First paragraph of content = SEO intro (prepended by sync)
+            $content_plain = wp_strip_all_tags($p->post_content);
+            $paras         = array_values(array_filter(array_map('trim', preg_split('/\n{2,}/', $content_plain) ?: [])));
+            $intro_text    = $paras[0] ?? '';
+
+            $row_id = 'diag-' . $p->ID;
         ?>
-            <tr>
+            <tr style="cursor:pointer" onclick="(function(r){r.style.display=r.style.display===''?'none':''})(document.getElementById('<?php echo esc_js($row_id); ?>'))">
                 <td>
                     <a href="<?php echo esc_url((string) get_edit_post_link($p->ID)); ?>"
+                       onclick="event.stopPropagation()"
                        style="font-weight:600;color:#1d2327;text-decoration:none">
-                        <?php echo esc_html(mb_substr($p->post_title, 0, 40) . (mb_strlen($p->post_title) > 40 ? '…' : '')); ?>
+                        <?php echo esc_html(mb_substr($p->post_title, 0, 42) . (mb_strlen($p->post_title) > 42 ? '…' : '')); ?>
                     </a>
-                    <br><span style="color:#999;font-size:.72rem"><?php echo esc_html($p->post_status); ?></span>
+                    <br><span style="color:#aaa;font-size:.68rem"><?php echo esc_html($p->post_status); ?><?php if ($cat_name) echo ' · ' . esc_html($cat_name); ?></span>
                 </td>
-                <td><?php echo esc_html($clean ?: '—'); ?></td>
-                <td style="color:#555"><?php echo esc_html($focuskw ? (mb_substr($focuskw, 0, 30) . (mb_strlen($focuskw) > 30 ? '…' : '')) : '—'); ?></td>
-                <td style="color:#666;font-size:.78rem"><?php echo esc_html($metadesc ? (mb_substr($metadesc, 0, 90) . (mb_strlen($metadesc) > 90 ? '…' : '')) : '—'); ?></td>
-                <td style="text-align:center"><?php echo $dot((bool) $cat_name); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
-                <td style="text-align:center"><?php echo $dot((bool) $price); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
-                <td style="text-align:center"><?php echo $dot((bool) $is_etsy); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
+                <td>
+                    <?php if ($clean): ?>
+                    <?php echo esc_html($clean); ?>
+                    <?php if ($ct_src) echo '<br><span style="margin-top:2px;display:inline-block">' . $badge($ct_src) . '</span>'; // phpcs:ignore ?>
+                    <?php else: ?><span style="color:#aaa">—</span><?php endif; ?>
+                </td>
+                <td style="color:#1a0dab;font-size:.77rem"><?php echo esc_html(mb_substr($yoast_title, 0, 68) . (mb_strlen($yoast_title) > 68 ? '…' : '')); ?></td>
+                <td style="color:#555;font-size:.77rem"><?php echo esc_html($focuskw ? (mb_substr($focuskw, 0, 40) . (mb_strlen($focuskw) > 40 ? '…' : '')) : '—'); ?></td>
+                <td style="color:#666;font-size:.76rem"><?php echo esc_html($metadesc ? (mb_substr($metadesc, 0, 85) . (mb_strlen($metadesc) > 85 ? '…' : '')) : '—'); ?></td>
+                <td style="text-align:center">
+                    <div style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap">
+                        <?php
+                        echo $dot((bool) $clean,    'Clean Title');  // phpcs:ignore
+                        echo $dot((bool) $focuskw,  'Focus KW');     // phpcs:ignore
+                        echo $dot((bool) $metadesc, 'Meta Desc');    // phpcs:ignore
+                        echo $dot((bool) $price,    'Preis');        // phpcs:ignore
+                        echo $dot((bool) $is_etsy,  'Etsy-Sync');    // phpcs:ignore
+                        ?>
+                    </div>
+                </td>
+            </tr>
+            <!-- Expandable detail row (hidden by default) -->
+            <tr id="<?php echo esc_attr($row_id); ?>" style="display:none">
+                <td colspan="6" style="padding:0;border-top:none">
+                    <div style="background:#fafafa;border-top:1px solid #ebebeb;padding:.85rem 1rem;display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+                        <div>
+                            <div style="font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#999;margin-bottom:.25rem">Yoast SEO-Titel</div>
+                            <div style="color:#1a0dab;font-size:.83rem;word-break:break-word"><?php echo esc_html($yoast_title); ?></div>
+                        </div>
+                        <div>
+                            <div style="font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#999;margin-bottom:.25rem">Focus Keyphrase</div>
+                            <div style="color:#1d2327;font-size:.83rem"><?php echo esc_html($focuskw ?: '—'); ?></div>
+                        </div>
+                        <div style="grid-column:span 2">
+                            <div style="font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#999;margin-bottom:.25rem">
+                                Meta Description <span style="font-weight:400;color:#bbb">(<?php echo esc_html(mb_strlen($metadesc)); ?> Zeichen, ideal 120–155)</span>
+                            </div>
+                            <div style="color:#545454;font-size:.83rem;line-height:1.55"><?php echo esc_html($metadesc ?: '—'); ?></div>
+                        </div>
+                        <?php if ($intro_text): ?>
+                        <div style="grid-column:span 2">
+                            <div style="font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#999;margin-bottom:.25rem">SEO Intro (erster Absatz der Beschreibung)</div>
+                            <div style="color:#444;font-size:.83rem;line-height:1.55"><?php echo esc_html(mb_substr($intro_text, 0, 500) . (mb_strlen($intro_text) > 500 ? '…' : '')); ?></div>
+                        </div>
+                        <?php endif; ?>
+                        <div style="grid-column:span 2;border-top:1px solid #eee;padding-top:.5rem;display:flex;gap:.75rem;flex-wrap:wrap;align-items:center">
+                            <?php if ($cat_name): ?><span style="font-size:.72rem;color:#666">Kategorie: <strong><?php echo esc_html($cat_name); ?></strong></span><?php endif; ?>
+                            <?php if ($price): ?><span style="font-size:.72rem;color:#666">Preis: <strong><?php echo esc_html(number_format((float) $price, 2, ',', '.') . ' €'); ?></strong></span><?php endif; ?>
+                            <?php if ($ct_src) echo '<span style="font-size:.72rem;color:#666">Clean Title Quelle: ' . $badge($ct_src) . '</span>'; // phpcs:ignore ?>
+                            <a href="<?php echo esc_url((string) get_edit_post_link($p->ID)); ?>"
+                               onclick="event.stopPropagation()"
+                               style="font-size:.72rem;color:#c4704a;text-decoration:none;margin-left:auto">Produkt bearbeiten →</a>
+                        </div>
+                    </div>
+                </td>
             </tr>
         <?php endforeach; ?>
         </tbody>

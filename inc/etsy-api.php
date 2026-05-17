@@ -54,10 +54,15 @@ if (!defined('ANNYHASE_TAG_ADJECTIVES')) {
  * @param int      $post_id WP post ID for category prefix lookup (0 = skip)
  * @return string Clean product noun, e.g. "Tasse" or "Kissen", or empty string
  */
-function etsy_sync_derive_clean_title(array $tags, int $post_id = 0): string {
+/**
+ * @param string|null $source Receives the derivation method:
+ *   'title_match' | 'tag_first' | 'title_extract' | 'tag_fallback'
+ */
+function etsy_sync_derive_clean_title(array $tags, int $post_id = 0, ?string &$source = null): string {
     if (empty($tags)) return '';
 
     $adjectives  = (array) (defined('ANNYHASE_TAG_ADJECTIVES') ? ANNYHASE_TAG_ADJECTIVES : []);
+    $adj_lower   = array_map('mb_strtolower', $adjectives);
     $ceramics_re = '/\b(keramik|ceramic|ceramics|porzellan|porcelain|töpferei|pottery|tonware|steinzeug|stoneware)\b/iu';
     $occasion_re = '/\b(für|for|als|geburtstag|weihnacht|muttertag|ostern|hochzeit|jubiläum|valentins|anniversary|christmas|birthday|wedding)\b/iu';
 
@@ -79,21 +84,68 @@ function etsy_sync_derive_clean_title(array $tags, int $post_id = 0): string {
         }
     }
 
+    // Extract meaningful words from the Etsy listing title.
+    // When a tag word appears in the title, it's a stronger signal than pure Etsy order.
+    $title_words = [];
+    if ($post_id > 0) {
+        $pt = get_the_title($post_id);
+        if ($pt) {
+            $stopwords = ['mit', 'und', 'für', 'als', 'aus', 'bei', 'in', 'an', 'auf', 'von', 'zu', 'den', 'dem', 'der', 'die', 'das', 'ein', 'eine', 'eines', 'einem', 'einer', 'the', 'and', 'for', 'with', 'from', 'your', 'ihr', 'dein'];
+            foreach (preg_split('/[\s\-,;:!?()\[\]\/]+/u', mb_strtolower($pt)) as $w) {
+                $w = preg_replace('/[^a-z0-9äöüß]/u', '', $w);
+                if (mb_strlen($w) >= 3 && !in_array($w, $stopwords, true) && !in_array($w, $adj_lower, true)) {
+                    $title_words[] = $w;
+                }
+            }
+        }
+    }
+
+    $first_valid = '';
+    $title_match = '';
+
     foreach ($tags as $tag) {
         $tag = trim((string) $tag);
         if (mb_strlen($tag) < 3) continue;
-        if (in_array(mb_strtolower($tag), $adjectives, true)) continue;
-        if ($cat_blacklist && in_array(mb_strtolower($tag), $cat_blacklist, true)) continue;
+        $tag_lower = mb_strtolower($tag);
+        if (in_array($tag_lower, $adj_lower, true)) continue;
+        if ($cat_blacklist && in_array($tag_lower, $cat_blacklist, true)) continue;
         if (preg_match($occasion_re, $tag)) continue;
 
         $clean = ucfirst($tag);
         if ($use_auto_pfx && !preg_match($ceramics_re, $clean)) {
             $clean = 'Keramik ' . $clean;
         }
-        return mb_substr($clean, 0, 50);
+        $clean = mb_substr($clean, 0, 50);
+
+        if (!$first_valid) $first_valid = $clean;
+
+        // Title-match: any word of this tag found in the listing title
+        if (!$title_match && $title_words) {
+            foreach (preg_split('/[\s\-]+/u', $tag_lower) as $tw) {
+                $tw = preg_replace('/[^a-z0-9äöüß]/u', '', $tw);
+                if (mb_strlen($tw) >= 3 && in_array($tw, $title_words, true)) {
+                    $title_match = $clean;
+                    break;
+                }
+            }
+        }
+
+        // Early exit once we have both candidates
+        if ($first_valid && ($title_match || empty($title_words))) break;
     }
 
-    $first = ucfirst(trim((string) ($tags[0] ?? '')));
+    if ($title_match) { $source = 'title_match';    return $title_match; }
+    if ($first_valid) { $source = 'tag_first';      return $first_valid; }
+
+    // Fallback: extract first meaningful word(s) directly from the listing title
+    if ($title_words) {
+        $source = 'title_extract';
+        return ucfirst(implode(' ', array_slice($title_words, 0, 2)));
+    }
+
+    // Last resort: original first tag without filters
+    $source = 'tag_fallback';
+    $first  = ucfirst(trim((string) ($tags[0] ?? '')));
     if (!$first) return '';
     if ($use_auto_pfx && !preg_match($ceramics_re, $first)) {
         $first = 'Keramik ' . $first;
@@ -1202,8 +1254,15 @@ function etsy_sync_auto_yoast_meta(int $post_id, array $listing = []): void {
         $tags   = $stored ? array_values(array_filter(array_map('trim', explode(',', $stored)))) : [];
     }
 
-    $override    = trim((string) get_post_meta($post_id, '_annyhase_clean_title_override', true));
-    $clean_title = $override ?: etsy_sync_derive_clean_title($tags, $post_id);
+    $override = trim((string) get_post_meta($post_id, '_annyhase_clean_title_override', true));
+    if ($override) {
+        $clean_title = $override;
+        $ct_source   = 'override';
+    } else {
+        $ct_source   = '';
+        $clean_title = etsy_sync_derive_clean_title($tags, $post_id, $ct_source);
+    }
+    update_post_meta($post_id, '_annyhase_clean_title_source', $ct_source);
 
     // Load per-category config (prefix, suffix, focuskw_addon, pers_sfx)
     $cfg = [];
