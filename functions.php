@@ -827,6 +827,10 @@ function annyhase_register_cpts(): void {
         'show_in_rest' => true,
     ]);
 
+    // Make built-in post_tag taxonomy available for products so Yoast SEO
+    // can use Etsy tags in its content analysis and %%tags%% templates.
+    register_taxonomy_for_object_type('post_tag', 'produkt');
+
     // --- Bewertungen (Kundenstimmen) ---
     register_post_type('bewertung', [
         'labels' => [

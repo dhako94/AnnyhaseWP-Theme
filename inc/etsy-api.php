@@ -1008,6 +1008,9 @@ function etsy_sync_save_extra_meta(int $post_id, array $listing): void {
     $tags = array_values(array_filter(array_map('sanitize_text_field', $listing['tags'] ?? [])));
     if ($tags) {
         update_post_meta($post_id, '_etsy_tags', implode(', ', $tags));
+        // Assign as native WP post tags so Yoast SEO includes them in its
+        // content analysis and %%tags%% replacement variables work correctly.
+        wp_set_post_terms($post_id, $tags, 'post_tag', false);
     }
 
     $materials = array_values(array_filter(array_map('sanitize_text_field', $listing['materials'] ?? [])));
