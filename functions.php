@@ -14,6 +14,7 @@ require_once get_template_directory() . '/inc/etsy-api.php';
 require_once get_template_directory() . '/inc/etsy-media.php';
 require_once get_template_directory() . '/inc/plugin-setup.php';
 require_once get_template_directory() . '/inc/seo-templates.php';
+require_once get_template_directory() . '/inc/seo-hub.php';
 
 /* -------------------------------------------------------
    Disable comments and blog posts completely
@@ -690,6 +691,16 @@ add_action('wp_head', function (): void {
                     'reviewBody' => $r_text,
                 ];
             }
+        }
+
+        // interactionStatistic — Etsy favorites count as a social proof signal.
+        $favorers = (int) get_post_meta($post->ID, '_etsy_favorers', true);
+        if ($favorers > 0) {
+            $product['interactionStatistic'] = [
+                '@type'                => 'InteractionCounter',
+                'interactionType'      => 'https://schema.org/LikeAction',
+                'userInteractionCount' => $favorers,
+            ];
         }
 
         $terms    = get_the_terms($post->ID, 'produktkategorie');

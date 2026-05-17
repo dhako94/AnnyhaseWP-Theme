@@ -35,12 +35,13 @@ add_action('produktkategorie_edit_form_fields', function (WP_Term $term): void {
         </td>
     </tr>
     <tr class="form-field">
-        <th scope="row"><label for="annyhase_seo_desc">SEO-Notiz <small style="font-weight:400">(Referenz)</small></label></th>
+        <th scope="row"><label for="annyhase_seo_desc">Meta-Desc. Suffix</label></th>
         <td>
             <textarea id="annyhase_seo_desc" name="annyhase_seo_desc"
                       class="large-text" rows="2"><?php echo esc_textarea($desc); ?></textarea>
             <p class="description">
-                Eigene Notiz / Referenztext für diese Kategorie. Wird nicht automatisch verwendet.<br>
+                Wird beim Etsy-Sync ans Ende der auto-generierten Meta-Description angehängt.<br>
+                Beispiel: <em>Hochbrand gebrannt, dicht und spülmaschinengeeignet.</em><br>
                 Für <code>%%term_description%%</code> in Yoast das native Feld <strong>Beschreibung</strong> (weiter oben) befüllen.
             </p>
         </td>
@@ -57,9 +58,9 @@ add_action('produktkategorie_add_form_fields', function (): void {
         <p>Haupt-Keyphrase für diese Kategorie (z.&thinsp;B. <em>handgemachte Keramik Tassen</em>).</p>
     </div>
     <div class="form-field">
-        <label for="annyhase_seo_desc">SEO-Notiz <small>(Referenz)</small></label>
+        <label for="annyhase_seo_desc">Meta-Desc. Suffix</label>
         <textarea id="annyhase_seo_desc" name="annyhase_seo_desc" rows="2"></textarea>
-        <p>Eigene Notiz. Für Yoast <code>%%term_description%%</code> das native Feld "Beschreibung" befüllen.</p>
+        <p>Wird beim Sync ans Ende der auto-generierten Meta-Description angehängt. Für Yoast <code>%%term_description%%</code> das native "Beschreibung"-Feld befüllen.</p>
     </div>
     <?php
 });

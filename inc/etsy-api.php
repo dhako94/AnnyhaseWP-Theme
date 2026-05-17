@@ -13,6 +13,151 @@
 defined('ABSPATH') || exit;
 
 /* =================================================================
+   SEO HELPERS – clean title derivation and meta description builder
+   ================================================================= */
+
+/**
+ * Lowercase tag values that are pure quality/process/material descriptors.
+ * Excluded from the clean product title and classified as Group C in the
+ * meta-description builder.
+ */
+if (!defined('ANNYHASE_TAG_ADJECTIVES')) {
+    define('ANNYHASE_TAG_ADJECTIVES', [
+        'handgetöpfert', 'handgemacht', 'handmade', 'handcrafted', 'hand made', 'hand crafted',
+        'unikat', 'unikate', 'einzigartig', 'unique',
+        'minimalistisch', 'minimalist', 'minimal',
+        'modern', 'contemporary',
+        'skandinavisch', 'scandinavian', 'nordic',
+        'japanisch', 'japanese', 'japan style', 'japanstyle', 'japandi',
+        'boho', 'bohemian',
+        'hochbrand', 'steinzeug', 'stoneware', 'earthenware',
+        'töpferei', 'pottery', 'keramikatelier', 'studiokeramik', 'studio pottery', 'studio ceramics',
+        'wabi sabi', 'wabisabi', 'wabi-sabi',
+        'keramik', 'ceramic', 'ceramics', 'porcelain', 'porzellan', 'tonware',
+        'nachhaltig', 'sustainable', 'umweltfreundlich', 'eco', 'eco friendly', 'eco-friendly',
+        'vintage', 'rustikal', 'rustic',
+        'geschenk', 'gift', 'present', 'geschenkidee', 'gift idea', 'mitbringsel',
+        'handarbeit', 'handwerk', 'kunsthandwerk', 'craft', 'artisan',
+    ]);
+}
+
+/**
+ * Derives a short, clean product title from Etsy listing tags.
+ *
+ * Picks the first tag that is not a pure adjective/process descriptor and
+ * does not look like a use-case phrase (containing "für", occasion keywords
+ * etc.). Prepends "Keramik" when the selected tag contains no ceramics term.
+ *
+ * @param string[] $tags Sanitized Etsy listing tags
+ * @return string Clean product title, e.g. "Keramik Tasse", or empty string
+ */
+function etsy_sync_derive_clean_title(array $tags): string {
+    if (empty($tags)) return '';
+
+    $adjectives  = (array) (defined('ANNYHASE_TAG_ADJECTIVES') ? ANNYHASE_TAG_ADJECTIVES : []);
+    $ceramics_re = '/\b(keramik|ceramic|ceramics|porzellan|porcelain|töpferei|pottery|tonware|steinzeug|stoneware)\b/iu';
+    $occasion_re = '/\b(für|for|als|geburtstag|weihnacht|muttertag|ostern|hochzeit|jubiläum|valentins|anniversary|christmas|birthday|wedding)\b/iu';
+
+    foreach ($tags as $tag) {
+        $tag = trim((string) $tag);
+        if (mb_strlen($tag) < 3) continue;
+        if (in_array(mb_strtolower($tag), $adjectives, true)) continue;
+        if (preg_match($occasion_re, $tag)) continue;
+
+        $clean = ucfirst($tag);
+        if (!preg_match($ceramics_re, $clean)) {
+            $clean = 'Keramik ' . $clean;
+        }
+        return mb_substr($clean, 0, 50);
+    }
+
+    $first = ucfirst(trim((string) ($tags[0] ?? '')));
+    if (!$first) return '';
+    if (!preg_match($ceramics_re, $first)) {
+        $first = 'Keramik ' . $first;
+    }
+    return mb_substr($first, 0, 50);
+}
+
+/**
+ * Builds an auto-generated SEO meta description from a product's Etsy tags
+ * and the per-category description suffix stored in term meta.
+ *
+ * Tags are classified into three groups:
+ *   Group A – specific product nouns (e.g. "Kaffeetasse", "Schale")
+ *   Group B – use-case / occasion phrases (e.g. "Geschenk für Mama")
+ *   Group C – quality / process adjectives (e.g. "handgetöpfert", "Unikat")
+ *
+ * Output template: "[A] – [C1] & [C2]. Ideal als [B]. [suffix]"
+ * Capped at 155 characters at a word boundary.
+ *
+ * @param int      $post_id WP post ID (used to read the category suffix)
+ * @param string[] $tags    Sanitized Etsy listing tags
+ * @return string Meta description, or empty string when no tags are available
+ */
+function etsy_sync_build_meta_description(int $post_id, array $tags): string {
+    if (empty($tags)) return '';
+
+    $adjectives  = (array) (defined('ANNYHASE_TAG_ADJECTIVES') ? ANNYHASE_TAG_ADJECTIVES : []);
+    $ceramics_re = '/\b(keramik|ceramic|ceramics|porzellan|porcelain|töpferei|pottery|tonware|steinzeug|stoneware)\b/iu';
+    $occasion_re = '/\b(für|for|als|geburtstag|weihnacht|muttertag|ostern|hochzeit|jubiläum|valentins|anniversary|christmas|birthday|wedding)\b/iu';
+
+    $group_a = [];
+    $group_b = [];
+    $group_c = [];
+
+    foreach ($tags as $tag) {
+        $tag = trim((string) $tag);
+        if (mb_strlen($tag) < 2) continue;
+        if (in_array(mb_strtolower($tag), $adjectives, true)) {
+            $group_c[] = ucfirst($tag);
+        } elseif (preg_match($occasion_re, $tag)) {
+            $group_b[] = $tag;
+        } else {
+            $group_a[] = ucfirst($tag);
+        }
+    }
+
+    $parts = [];
+
+    $noun = $group_a ? $group_a[0] : '';
+    if ($noun && !preg_match($ceramics_re, $noun)) {
+        $noun = 'Keramik ' . $noun;
+    }
+    $quality = array_slice($group_c, 0, 2);
+
+    if ($noun && $quality) {
+        $parts[] = $noun . ' – ' . implode(' & ', $quality) . '.';
+    } elseif ($noun) {
+        $parts[] = $noun . '.';
+    } elseif ($quality) {
+        $parts[] = implode(' & ', $quality) . '.';
+    }
+
+    if ($group_b) {
+        $parts[] = 'Ideal als ' . $group_b[0] . '.';
+    }
+
+    $terms  = get_the_terms($post_id, 'produktkategorie');
+    $term   = ($terms && !is_wp_error($terms)) ? $terms[0] : null;
+    $suffix = $term ? trim((string) get_term_meta($term->term_id, '_annyhase_seo_desc', true)) : '';
+    if ($suffix) $parts[] = $suffix;
+
+    if (empty($parts)) return '';
+
+    $desc = implode(' ', $parts);
+
+    if (mb_strlen($desc) > 155) {
+        $cut = mb_substr($desc, 0, 152);
+        $sp  = mb_strrpos($cut, ' ');
+        if ($sp !== false && $sp > 80) $cut = mb_substr($cut, 0, $sp);
+        $desc = rtrim($cut, '.,;:–-') . '…';
+    }
+
+    return $desc;
+}
+
+/* =================================================================
    SETTINGS REGISTRATION + ADMIN MENU
    ================================================================= */
 
@@ -928,24 +1073,53 @@ function etsy_sync_build_excerpt(string $desc, int $max = 155): string {
 }
 
 /**
- * Sets the Yoast focus keyphrase from the product's primary category SEO
- * keyword. Clears any previously auto-generated title/metadesc overrides so
- * Yoast's own Content Types templates control the format going forward.
+ * Sets Yoast SEO meta fields for a product post based on its Etsy tags and
+ * primary category keyword. Called at the end of every sync pass.
+ *
+ * Written fields:
+ *   _yoast_wpseo_title    – "[clean title] – %%produkt_kat%% | %%sitename%%"
+ *   _yoast_wpseo_focuskw  – "[clean title] handgetöpfert"
+ *   _yoast_wpseo_metadesc – auto-generated from tag groups + category suffix
+ *   _annyhase_clean_title – stored for the SEO Hub diagnostics tab
+ *
  * No-op when Yoast SEO is not active.
+ *
+ * @param int   $post_id WP post ID
+ * @param array $listing Raw Etsy listing array (tags are read from here;
+ *                       falls back to stored _etsy_tags meta when absent)
  */
-function etsy_sync_auto_yoast_meta(int $post_id): void {
+function etsy_sync_auto_yoast_meta(int $post_id, array $listing = []): void {
     if (!defined('WPSEO_VERSION')) return;
-
-    // Remove auto-generated overrides — Yoast templates handle formatting.
-    delete_post_meta($post_id, '_yoast_wpseo_title');
-    delete_post_meta($post_id, '_yoast_wpseo_metadesc');
-
     if (!function_exists('annyhase_build_yoast_fields')) return;
-    $fields = annyhase_build_yoast_fields($post_id);
-    // Always overwrite — replaces stale or auto-generated values from old syncs.
-    // Only skipped when no category keyword is available (empty string).
-    if ($fields['focuskw']) {
-        update_post_meta($post_id, '_yoast_wpseo_focuskw', $fields['focuskw']);
+
+    $tags = array_values(array_filter(array_map('sanitize_text_field', $listing['tags'] ?? [])));
+    if (!$tags) {
+        $stored = (string) get_post_meta($post_id, '_etsy_tags', true);
+        $tags   = $stored ? array_values(array_filter(array_map('trim', explode(',', $stored)))) : [];
+    }
+
+    $clean_title = etsy_sync_derive_clean_title($tags);
+
+    if ($clean_title) {
+        update_post_meta($post_id, '_annyhase_clean_title', $clean_title);
+        // Yoast still resolves %%produkt_kat%% and %%sitename%% at render time.
+        update_post_meta($post_id, '_yoast_wpseo_title', $clean_title . ' – %%produkt_kat%% | %%sitename%%');
+    } else {
+        delete_post_meta($post_id, '_annyhase_clean_title');
+        delete_post_meta($post_id, '_yoast_wpseo_title');
+    }
+
+    $cat_kw  = annyhase_build_yoast_fields($post_id)['focuskw'];
+    $focuskw = $clean_title ? trim($clean_title . ' handgetöpfert') : $cat_kw;
+    if ($focuskw) {
+        update_post_meta($post_id, '_yoast_wpseo_focuskw', $focuskw);
+    }
+
+    $meta_desc = etsy_sync_build_meta_description($post_id, $tags);
+    if ($meta_desc) {
+        update_post_meta($post_id, '_yoast_wpseo_metadesc', $meta_desc);
+    } else {
+        delete_post_meta($post_id, '_yoast_wpseo_metadesc');
     }
 }
 
@@ -1010,6 +1184,11 @@ function etsy_sync_save_extra_meta(int $post_id, array $listing): void {
         // Assign as native WP post tags so Yoast SEO includes them in its
         // content analysis and %%tags%% replacement variables work correctly.
         wp_set_post_terms($post_id, $tags, 'post_tag', false);
+    }
+
+    $favorers = (int) ($listing['num_favorers'] ?? 0);
+    if ($favorers > 0) {
+        update_post_meta($post_id, '_etsy_favorers', $favorers);
     }
 }
 
@@ -1195,7 +1374,7 @@ function etsy_sync_products(bool $update_existing = false): array {
                     if ($price_str) update_post_meta($post_id, '_produkt_preis', $price_str);
                     if ($etsy_url)  update_post_meta($post_id, '_etsy_url',      $etsy_url);
                     etsy_sync_set_product_term($post_id, $section_id, $sections);
-                    etsy_sync_auto_yoast_meta($post_id);
+                    etsy_sync_auto_yoast_meta($post_id, $listing);
                     etsy_sync_save_extra_meta($post_id, $listing);
                     $result['updated']++;
                 }
@@ -1214,7 +1393,7 @@ function etsy_sync_products(bool $update_existing = false): array {
                 if ($price_str) update_post_meta($post_id, '_produkt_preis', $price_str);
                 if ($etsy_url)  update_post_meta($post_id, '_etsy_url',      $etsy_url);
                 etsy_sync_set_product_term($post_id, $section_id, $sections);
-                etsy_sync_auto_yoast_meta($post_id);
+                etsy_sync_auto_yoast_meta($post_id, $listing);
                 etsy_sync_save_extra_meta($post_id, $listing);
                 $mc = etsy_sync_import_listing_media($post_id, $listing, false);
                 $result['images_ok']  += $mc['images_ok'];
@@ -1358,7 +1537,7 @@ add_action('wp_ajax_etsy_sync_products_batch', function (): void {
                 if ($price_str) update_post_meta($post_id, '_produkt_preis', $price_str);
                 if ($etsy_url)  update_post_meta($post_id, '_etsy_url',      $etsy_url);
                 etsy_sync_set_product_term($post_id, $section_id, $sections);
-                etsy_sync_auto_yoast_meta($post_id);
+                etsy_sync_auto_yoast_meta($post_id, $listing);
                 etsy_sync_save_extra_meta($post_id, $listing);
                 $updated++;
             }
@@ -1371,7 +1550,7 @@ add_action('wp_ajax_etsy_sync_products_batch', function (): void {
                 if ($price_str) update_post_meta($post_id, '_produkt_preis', $price_str);
                 if ($etsy_url)  update_post_meta($post_id, '_etsy_url',      $etsy_url);
                 etsy_sync_set_product_term($post_id, $section_id, $sections);
-                etsy_sync_auto_yoast_meta($post_id);
+                etsy_sync_auto_yoast_meta($post_id, $listing);
                 etsy_sync_save_extra_meta($post_id, $listing);
                 $new++;
             }
