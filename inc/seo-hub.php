@@ -491,18 +491,63 @@ function annyhase_seo_hub_tab_categories(): void {
                 </p>
             </div>
 
-            <!-- Row 4: Titel-Sperrliste -->
+            <!-- Row 4: Titel-Sperrliste (visual tag cloud) -->
             <div style="margin-bottom:1rem">
-                <label style="display:block;font-size:.83rem;font-weight:600;margin-bottom:.2rem"
-                       for="bl_<?php echo esc_attr($tid); ?>">Titel-Sperrliste</label>
-                <input type="text" id="bl_<?php echo esc_attr($tid); ?>"
-                       name="blacklist_<?php echo esc_attr($tid); ?>"
+                <label style="display:block;font-size:.83rem;font-weight:600;margin-bottom:.4rem">
+                    Titel-Sperrliste
+                    <span style="font-weight:400;color:#888;font-size:.75rem"> — klicken = sperren <span style="color:#dc2626">■</span> · nochmal klicken = freigeben <span style="color:#16a34a">■</span></span>
+                </label>
+                <?php
+                $cat_pids = get_posts([
+                    'post_type' => 'produkt', 'posts_per_page' => -1, 'fields' => 'ids',
+                    'post_status' => 'publish', 'no_found_rows' => true,
+                    'tax_query' => [['taxonomy' => 'produktkategorie', 'field' => 'term_id', 'terms' => $tid]],
+                ]);
+                $all_tags_map = [];
+                foreach ($cat_pids as $cpid) {
+                    $t_raw = (string) get_post_meta($cpid, '_etsy_tags', true);
+                    if ($t_raw) {
+                        foreach (array_map('trim', explode(',', $t_raw)) as $t) {
+                            if ($t !== '') $all_tags_map[mb_strtolower($t)] = $t;
+                        }
+                    }
+                }
+                ksort($all_tags_map);
+                $blocked_lower = array_values(array_filter(array_map(
+                    'mb_strtolower', array_map('trim', explode(',', $bl_list))
+                )));
+                ?>
+                <?php if ($all_tags_map): ?>
+                <div class="an-tag-cloud" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:.4rem">
+                    <?php foreach ($all_tags_map as $slug => $display):
+                        $is_bl = in_array($slug, $blocked_lower, true);
+                    ?>
+                    <button type="button"
+                            class="an-tag-toggle<?php echo $is_bl ? ' an-blocked' : ''; ?>"
+                            data-tag="<?php echo esc_attr($slug); ?>"
+                            style="padding:3px 10px;border-radius:20px;font-size:.78rem;cursor:pointer;border:1px solid;transition:all .12s;
+                                   <?php echo $is_bl
+                                       ? 'background:#fef2f2;color:#dc2626;border-color:#fca5a5;text-decoration:line-through'
+                                       : 'background:#f0fdf4;color:#16a34a;border-color:#86efac'; ?>">
+                        <?php echo esc_html($display); ?>
+                    </button>
+                    <?php endforeach; ?>
+                </div>
+                <input type="hidden" name="blacklist_<?php echo esc_attr($tid); ?>"
+                       class="an-blacklist-input"
+                       value="<?php echo esc_attr($bl_list); ?>">
+                <p style="font-size:.72rem;color:#888;margin:.2rem 0 0">
+                    Grün = wird für Produktnamen verwendet &nbsp;·&nbsp; Rot/durchgestrichen = gesperrt (wird beim Sync übersprungen)
+                </p>
+                <?php else: ?>
+                <input type="text" name="blacklist_<?php echo esc_attr($tid); ?>"
                        value="<?php echo esc_attr($bl_list); ?>"
-                       placeholder="z.B. taufe, ostern, weihnachten"
+                       placeholder="z.B. taufe, ostern — erscheint als Tag-Auswahl nach erstem Sync"
                        class="large-text" style="width:100%">
                 <p style="font-size:.72rem;color:#888;margin:.2rem 0 0">
-                    Komma-getrennte Wörter die beim Ableiten des Produktnamens aus Etsy-Tags übersprungen werden. Groß-/Kleinschreibung egal.
+                    Noch keine Produkte in dieser Kategorie. Werte sind komma-getrennt.
                 </p>
+                <?php endif; ?>
             </div>
 
             <!-- SERP snippet preview -->
@@ -626,6 +671,25 @@ function annyhase_seo_hub_tab_categories(): void {
         // Activate first card on load
         var first = document.querySelector('.seo-cat-card');
         if (first) activateCard(first);
+
+        // Tag blacklist toggle
+        document.querySelectorAll('.an-tag-toggle').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var isBlocked = btn.classList.toggle('an-blocked');
+                btn.style.background     = isBlocked ? '#fef2f2' : '#f0fdf4';
+                btn.style.color          = isBlocked ? '#dc2626' : '#16a34a';
+                btn.style.borderColor    = isBlocked ? '#fca5a5' : '#86efac';
+                btn.style.textDecoration = isBlocked ? 'line-through' : '';
+                var card = btn.closest('.seo-cat-card');
+                var inp  = card ? card.querySelector('.an-blacklist-input') : null;
+                if (!inp) return;
+                var bl = [];
+                card.querySelectorAll('.an-tag-toggle.an-blocked').forEach(function(b) {
+                    bl.push(b.dataset.tag);
+                });
+                inp.value = bl.join(', ');
+            });
+        });
     })();
     </script>
     </div><!-- /form column -->

@@ -674,6 +674,16 @@ add_action('wp_head', function (): void {
                 ];
             }
 
+            // Return policy — 14 days as per German Widerrufsrecht
+            $offer['hasMerchantReturnPolicy'] = [
+                '@type'                => 'MerchantReturnPolicy',
+                'applicableCountry'    => 'DE',
+                'returnPolicyCategory' => 'https://schema.org/MerchantReturnFiniteReturnWindow',
+                'merchantReturnDays'   => 14,
+                'returnMethod'         => 'https://schema.org/ReturnByMail',
+                'returnFees'           => 'https://schema.org/FreeReturn',
+            ];
+
             $product['offers'] = $offer;
         }
 
@@ -751,6 +761,21 @@ add_action('wp_head', function (): void {
 
         $schemas[] = ['@type' => 'BreadcrumbList', 'itemListElement' => $crumbs];
         $schemas[] = $product;
+
+        // FAQ schema for personalizable products
+        if (get_post_meta($post->ID, '_etsy_personalizable', true) === '1') {
+            $pers_txt   = (string) get_post_meta($post->ID, '_etsy_personalization_instructions', true);
+            $faq_answer = 'Ja, dieses Produkt kann personalisiert werden.';
+            if ($pers_txt) $faq_answer .= ' ' . $pers_txt;
+            $schemas[] = [
+                '@type'      => 'FAQPage',
+                'mainEntity' => [[
+                    '@type'          => 'Question',
+                    'name'           => 'Kann dieses Produkt personalisiert werden?',
+                    'acceptedAnswer' => ['@type' => 'Answer', 'text' => $faq_answer],
+                ]],
+            ];
+        }
     }
 
     if (!$seo_plugin && is_post_type_archive('produkt')) {

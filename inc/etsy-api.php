@@ -1347,6 +1347,15 @@ function etsy_sync_save_extra_meta(int $post_id, array $listing): void {
         delete_post_meta($post_id, '_etsy_materials');
     }
 
+    // Style tags (Etsy design taxonomy, e.g. ["Minimalist", "Rustic"])
+    $style_tags = array_values(array_filter(array_map('sanitize_text_field', $listing['style'] ?? [])));
+    if ($style_tags) {
+        update_post_meta($post_id, '_etsy_style', implode(', ', $style_tags));
+        wp_set_post_terms($post_id, $style_tags, 'post_tag', true);
+    } else {
+        delete_post_meta($post_id, '_etsy_style');
+    }
+
     // Current stock quantity
     $qty = (int) ($listing['quantity'] ?? 0);
     update_post_meta($post_id, '_etsy_quantity', $qty);
@@ -1393,9 +1402,14 @@ function etsy_sync_import_listing_media(int $post_id, array $listing, bool $forc
 
         update_post_meta($att_id, '_etsy_product_media', '1');
 
-        // Use Etsy's alt_text if provided; fall back to the product title.
         $alt = sanitize_text_field($img['alt_text'] ?? '');
-        update_post_meta($att_id, '_wp_attachment_image_alt', $alt ?: $title);
+        if (!$alt) {
+            $ct    = (string) get_post_meta($post_id, '_annyhase_clean_title', true);
+            $t_arr = get_the_terms($post_id, 'produktkategorie');
+            $cat_n = ($t_arr && !is_wp_error($t_arr)) ? $t_arr[0]->name : '';
+            $alt   = $ct ? trim("{$ct} {$cat_n} handgemacht") : $title;
+        }
+        update_post_meta($att_id, '_wp_attachment_image_alt', $alt);
 
         $counts['images_ok']++;
 
