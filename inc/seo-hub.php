@@ -38,8 +38,12 @@ add_action('wp_ajax_annyhase_apply_yoast_config', function (): void {
     }
 
     $titles = get_option('wpseo_titles', []);
+    $titles['title-home-wpseo']              = '%%sitename%% – %%sitedesc%%';
+    $titles['title-post']                    = '%%title%% | %%sitename%%';
+    $titles['title-page']                    = '%%title%% | %%sitename%%';
     $titles['title-produkt']                 = '%%short_title%% – %%produkt_kat%% | %%sitename%%';
     $titles['metadesc-produkt']              = '';
+    $titles['title-ptarchive-produkt']       = 'Handgemachte Produkte | %%sitename%%';
     $titles['title-tax-produktkategorie']    = '%%term_title%% – Handgemacht | %%sitename%%';
     $titles['metadesc-tax-produktkategorie'] = '%%term_description%%';
     $titles['noindex-author-wpseo']          = '1';
@@ -163,17 +167,21 @@ function annyhase_seo_hub_tab_yoast(): void {
 
     $opt_main = get_option('wpseo', []);
 
-    // [label, opt-group ('titles'|'main'), option key, raw recommended, human display (null = show as code)]
+    // [label, opt-group ('titles'|'main'), option key, raw recommended, human display (null=show as code), why explanation]
     $rows = [
-        ['Produkt – Titel',            'titles', 'title-produkt',                 '%%short_title%% – %%produkt_kat%% | %%sitename%%',  null],
-        ['Produkt – Meta Desc',        'titles', 'metadesc-produkt',              '',                                                   null],
-        ['Kategorie – Titel',          'titles', 'title-tax-produktkategorie',    '%%term_title%% – Handgemacht | %%sitename%%',         null],
-        ['Kategorie – Meta Desc',      'titles', 'metadesc-tax-produktkategorie', '%%term_description%%',                                null],
-        ['Autor-Archive deaktivieren', 'titles', 'noindex-author-wpseo',          '1',                                                  'Aktiviert'],
-        ['Datum-Archive deaktivieren', 'titles', 'noindex-date-wpseo',            '1',                                                  'Aktiviert'],
-        ['Breadcrumbs aktivieren',     'titles', 'breadcrumbs-enable',            '1',                                                  'Aktiviert'],
-        ['Open Graph Tags (FB / OG)',  'main',   'opengraph',                     '1',                                                  'Aktiviert'],
-        ['Twitter/X Cards',            'main',   'twitter',                       '1',                                                  'Aktiviert'],
+        ['Homepage – Titel',           'titles', 'title-home-wpseo',              '%%sitename%% – %%sitedesc%%',                       null, ''],
+        ['Beiträge – Titel',           'titles', 'title-post',                    '%%title%% | %%sitename%%',                          null, ''],
+        ['Seiten – Titel',             'titles', 'title-page',                    '%%title%% | %%sitename%%',                          null, ''],
+        ['Produkt-Archiv – Titel',     'titles', 'title-ptarchive-produkt',       'Handgemachte Produkte | %%sitename%%',               null, ''],
+        ['Produkt – Titel',            'titles', 'title-produkt',                 '%%short_title%% – %%produkt_kat%% | %%sitename%%',  null, ''],
+        ['Produkt – Meta Desc',        'titles', 'metadesc-produkt',              '',                                                   null, ''],
+        ['Kategorie – Titel',          'titles', 'title-tax-produktkategorie',    '%%term_title%% – Handgemacht | %%sitename%%',        null, ''],
+        ['Kategorie – Meta Desc',      'titles', 'metadesc-tax-produktkategorie', '%%term_description%%',                               null, ''],
+        ['Autor-Archive deaktivieren', 'titles', 'noindex-author-wpseo',          '1', 'Aktiviert', 'Bei einem Einzel-Autoren-Shop doppeln Autor-Archive den gesamten Content — Google wertet das als Duplicate Content.'],
+        ['Datum-Archive deaktivieren', 'titles', 'noindex-date-wpseo',            '1', 'Aktiviert', 'Monats-/Jahresarchive haben für einen Shop keinen Mehrwert und werden von Google als Thin Content eingestuft.'],
+        ['Breadcrumbs aktivieren',     'titles', 'breadcrumbs-enable',            '1', 'Aktiviert', 'Breadcrumbs erscheinen in Google-SERPs als „Shop › Kategorie › Produkt"-Pfad und verbessern die Klickrate.'],
+        ['Open Graph Tags (FB / OG)',  'main',   'opengraph',                     '1', 'Aktiviert', 'Ohne OG-Tags zeigt Facebook, Instagram & Pinterest beim Teilen kein Bild und keinen Titel — sieht unprofessionell aus.'],
+        ['Twitter/X Cards',            'main',   'twitter',                       '1', 'Aktiviert', 'Twitter/X wertet eigene Card-Tags aus (nicht OG). Ohne sie gibt es beim Teilen auf X keine Linkvorschau.'],
     ];
     ?>
     <div style="max-width:960px">
@@ -197,7 +205,7 @@ function annyhase_seo_hub_tab_yoast(): void {
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($rows as [$label, $opt_grp, $key, $recommended, $rec_display]):
+                <?php foreach ($rows as [$label, $opt_grp, $key, $recommended, $rec_display, $why]):
                     $opt_data = ($opt_grp === 'main') ? $opt_main : $opt;
                     $current  = $opt_data[$key] ?? null;
                     $is_bool  = ($rec_display !== null);
@@ -228,6 +236,9 @@ function annyhase_seo_hub_tab_yoast(): void {
                         <strong style="color:#2e7d32"><?php echo esc_html($show_rec); ?></strong>
                         <?php else: ?>
                         <code style="font-size:.8rem"><?php echo esc_html($show_rec); ?></code>
+                        <?php endif; ?>
+                        <?php if (!empty($why)): ?>
+                        <div style="font-size:.72rem;color:#888;font-style:italic;margin-top:.2rem"><?php echo esc_html($why); ?></div>
                         <?php endif; ?>
                     </td>
                 </tr>
@@ -495,7 +506,7 @@ function annyhase_seo_hub_tab_categories(): void {
             <div style="margin-bottom:1rem">
                 <label style="display:block;font-size:.83rem;font-weight:600;margin-bottom:.4rem">
                     Titel-Sperrliste
-                    <span style="font-weight:400;color:#888;font-size:.75rem"> — klicken = sperren <span style="color:#dc2626">■</span> · nochmal klicken = freigeben <span style="color:#16a34a">■</span></span>
+                    <span style="font-weight:400;color:#888;font-size:.75rem"> — klicken = sperren · nochmal klicken = freigeben · <span style="color:#92400e;font-weight:600">Amber ✓ = wird Produkttitel</span></span>
                 </label>
                 <?php
                 $cat_pids = get_posts([
@@ -503,33 +514,94 @@ function annyhase_seo_hub_tab_categories(): void {
                     'post_status' => 'publish', 'no_found_rows' => true,
                     'tax_query' => [['taxonomy' => 'produktkategorie', 'field' => 'term_id', 'terms' => $tid]],
                 ]);
-                $all_tags_map = [];
-                foreach ($cat_pids as $cpid) {
-                    $t_raw = (string) get_post_meta($cpid, '_etsy_tags', true);
-                    if ($t_raw) {
-                        foreach (array_map('trim', explode(',', $t_raw)) as $t) {
-                            if ($t !== '') $all_tags_map[mb_strtolower($t)] = $t;
-                        }
-                    }
-                }
-                ksort($all_tags_map);
                 $blocked_lower = array_values(array_filter(array_map(
                     'mb_strtolower', array_map('trim', explode(',', $bl_list))
                 )));
+
+                // Same adjectives + occasion patterns as etsy_sync_derive_clean_title
+                $adj_lower   = defined('ANNYHASE_TAG_ADJECTIVES')
+                    ? array_map('mb_strtolower', (array) ANNYHASE_TAG_ADJECTIVES) : [];
+                $occasion_re = '/\b(für|for|als|geburtstag|weihnacht|muttertag|ostern|hochzeit|jubiläum|valentins|anniversary|christmas|birthday|wedding)\b/iu';
+
+                // Build ordered tag list:
+                // 1. Example product's tags in original Etsy relevance order
+                // 2. Other products' unique tags appended alphabetically
+                $ordered_tags = []; // slug => [display, order, is_adj, is_occ]
+                $ex_pid = !empty($_ex) ? $_ex[0]->ID : 0;
+                if ($ex_pid) {
+                    $ex_tags_raw = (string) get_post_meta($ex_pid, '_etsy_tags', true);
+                    $i = 0;
+                    foreach (array_map('trim', explode(',', $ex_tags_raw)) as $t) {
+                        if ($t === '') continue;
+                        $slug = mb_strtolower($t);
+                        $ordered_tags[$slug] = [
+                            'display' => $t,
+                            'order'   => $i++,
+                            'is_adj'  => in_array($slug, $adj_lower, true),
+                            'is_occ'  => (bool) preg_match($occasion_re, $t),
+                        ];
+                    }
+                }
+                $extra_tags = [];
+                foreach ($cat_pids as $cpid) {
+                    if ($cpid === $ex_pid) continue;
+                    $t_raw = (string) get_post_meta($cpid, '_etsy_tags', true);
+                    if (!$t_raw) continue;
+                    foreach (array_map('trim', explode(',', $t_raw)) as $t) {
+                        if ($t === '') continue;
+                        $slug = mb_strtolower($t);
+                        if (!isset($ordered_tags[$slug])) $extra_tags[$slug] = $t;
+                    }
+                }
+                ksort($extra_tags);
+                $extra_order = count($ordered_tags);
+                foreach ($extra_tags as $slug => $display) {
+                    $ordered_tags[$slug] = [
+                        'display' => $display,
+                        'order'   => $extra_order++,
+                        'is_adj'  => in_array($slug, $adj_lower, true),
+                        'is_occ'  => (bool) preg_match($occasion_re, $display),
+                    ];
+                }
+
+                // Winner: first non-blocked, non-adj, non-occ, length >= 3 (in order)
+                $tag_winner = '';
+                foreach ($ordered_tags as $slug => $info) {
+                    if ($info['is_adj'] || $info['is_occ'] || mb_strlen($slug) < 3) continue;
+                    if (in_array($slug, $blocked_lower, true)) continue;
+                    $tag_winner = $slug;
+                    break;
+                }
                 ?>
-                <?php if ($all_tags_map): ?>
+                <?php if ($ordered_tags): ?>
                 <div class="an-tag-cloud" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:.4rem">
-                    <?php foreach ($all_tags_map as $slug => $display):
-                        $is_bl = in_array($slug, $blocked_lower, true);
+                    <?php foreach ($ordered_tags as $slug => $info):
+                        $is_bl   = in_array($slug, $blocked_lower, true);
+                        $is_auto = $info['is_adj'] || $info['is_occ'];
+                        $is_win  = ($slug === $tag_winner);
+                        if ($is_auto) {
+                            $btn_style = 'background:#f3f4f6;color:#9ca3af;border-color:#d1d5db;cursor:default;opacity:.8';
+                        } elseif ($is_win) {
+                            $btn_style = 'background:#fffbeb;color:#92400e;border-color:#fbbf24;font-weight:700;cursor:pointer';
+                        } elseif ($is_bl) {
+                            $btn_style = 'background:#fef2f2;color:#dc2626;border-color:#fca5a5;text-decoration:line-through;cursor:pointer';
+                        } else {
+                            $btn_style = 'background:#f0fdf4;color:#16a34a;border-color:#86efac;cursor:pointer';
+                        }
                     ?>
                     <button type="button"
-                            class="an-tag-toggle<?php echo $is_bl ? ' an-blocked' : ''; ?>"
+                            class="an-tag-toggle<?php echo $is_bl ? ' an-blocked' : ''; ?><?php echo $is_auto ? ' an-auto-filtered' : ''; ?><?php echo $is_win ? ' an-winner' : ''; ?>"
                             data-tag="<?php echo esc_attr($slug); ?>"
-                            style="padding:3px 10px;border-radius:20px;font-size:.78rem;cursor:pointer;border:1px solid;transition:all .12s;
-                                   <?php echo $is_bl
-                                       ? 'background:#fef2f2;color:#dc2626;border-color:#fca5a5;text-decoration:line-through'
-                                       : 'background:#f0fdf4;color:#16a34a;border-color:#86efac'; ?>">
-                        <?php echo esc_html($display); ?>
+                            data-display="<?php echo esc_attr(ucfirst($info['display'])); ?>"
+                            data-order="<?php echo esc_attr((string) $info['order']); ?>"
+                            data-adj="<?php echo $info['is_adj'] ? '1' : '0'; ?>"
+                            data-occ="<?php echo $info['is_occ'] ? '1' : '0'; ?>"
+                            <?php if ($is_auto) {
+                                $title_attr = $info['is_adj'] ? 'Adjektiv – wird automatisch übersprungen' : 'Anlass/Gelegenheit – wird automatisch übersprungen';
+                                echo 'disabled title="' . esc_attr($title_attr) . '"';
+                            } ?>
+                            style="padding:3px 10px;border-radius:20px;font-size:.78rem;border:1px solid;transition:all .12s;<?php echo $btn_style; ?>">
+                        <?php echo esc_html($info['display']); ?><?php echo $is_win ? ' ✓' : ''; ?>
                     </button>
                     <?php endforeach; ?>
                 </div>
@@ -537,7 +609,7 @@ function annyhase_seo_hub_tab_categories(): void {
                        class="an-blacklist-input"
                        value="<?php echo esc_attr($bl_list); ?>">
                 <p style="font-size:.72rem;color:#888;margin:.2rem 0 0">
-                    Grün = wird für Produktnamen verwendet &nbsp;·&nbsp; Rot/durchgestrichen = gesperrt (wird beim Sync übersprungen)
+                    <span style="color:#92400e;font-weight:600">Amber ✓</span> = wird Produkttitel beim Sync &nbsp;·&nbsp; <span style="color:#16a34a">Grün</span> = verfügbar &nbsp;·&nbsp; <span style="color:#dc2626">Rot</span> = gesperrt &nbsp;·&nbsp; <span style="color:#9ca3af">Grau</span> = autom. übersprungen (Adjektiv/Anlass)
                 </p>
                 <?php else: ?>
                 <input type="text" name="blacklist_<?php echo esc_attr($tid); ?>"
@@ -588,20 +660,17 @@ function annyhase_seo_hub_tab_categories(): void {
         }
 
         function activateCard(card) {
-            // Highlight active, reset others
             document.querySelectorAll('.seo-cat-card').forEach(function(c) {
                 c.style.borderColor = (c === card) ? '#c4704a' : '#e2e4e7';
             });
             activeCard = card;
 
-            var pfx    = (card.querySelector('.an-prefix')    || {value:''}).value.trim();
-            var sfx    = (card.querySelector('.an-suffix')    || {value:''}).value.trim();
-            var fkwA   = (card.querySelector('.an-fkw-add')   || {value:''}).value.trim();
-            var dsfx   = (card.querySelector('.an-desc-sfx')  || {value:''}).value.trim();
-            var intrEl = card.querySelector('.an-intro-tpl');
+            var pfx     = (card.querySelector('.an-prefix')   || {value:''}).value.trim();
+            var sfx     = (card.querySelector('.an-suffix')   || {value:''}).value.trim();
+            var fkwA    = (card.querySelector('.an-fkw-add')  || {value:''}).value.trim();
+            var dsfx    = (card.querySelector('.an-desc-sfx') || {value:''}).value.trim();
+            var intrEl  = card.querySelector('.an-intro-tpl');
             var intrTpl = intrEl ? intrEl.value.trim() : '';
-            var persEl  = card.querySelector('[class*="regular-text"]:not(.an-prefix):not(.an-suffix):not(.an-fkw-add):not(.an-kw)');
-            // Fetch pers_sfx by name pattern
             var persSfxEl = card.querySelector('[name^="pers_sfx_"]');
             var persSfx   = persSfxEl ? persSfxEl.value.trim() : '';
 
@@ -610,17 +679,13 @@ function annyhase_seo_hub_tab_categories(): void {
             var exTitle = card.dataset.exTitle || '';
             var site    = card.dataset.site    || '';
 
-            // Build composed nouns
             var nounFull  = [pfx, exNoun, sfx].filter(Boolean).join(' ');
             var nounPers  = [pfx, exNoun, persSfx].filter(Boolean).join(' ') || nounFull;
             var fkwFull   = [pfx, exNoun, fkwA].filter(Boolean).join(' ');
             var introFull = intrTpl ? intrTpl.replace(/\{noun\}/g, nounFull || exNoun) : '';
 
-            // Context header
             txt('leg-context-cat',     cat);
             txt('leg-context-product', exTitle || exNoun || '–');
-
-            // Per-field examples
             if (pfx) {
                 txt('leg-ex-prefix', '"' + pfx + '" + ' + (exNoun||'Produktname') + ' → ' + (pfx + ' ' + (exNoun||'Produktname')));
             } else {
@@ -630,33 +695,70 @@ function annyhase_seo_hub_tab_categories(): void {
             txt('leg-ex-pers',    nounPers);
             txt('leg-ex-fkw',     fkwFull   || exNoun || '–');
             txt('leg-ex-meta',    (nounFull || exNoun) + (dsfx ? ' … ' + dsfx.substring(0, 55) + (dsfx.length > 55 ? '…' : '') : ''));
+            txt('leg-seo-title',  (nounFull || exNoun) + ' – ' + cat + ' | ' + site);
 
-            // SEO-Titel
-            txt('leg-seo-title', (nounFull || exNoun) + ' – ' + cat + ' | ' + site);
-
-            // Intro-Preview
             var prev = document.getElementById('leg-intro-preview');
             if (prev) {
                 if (introFull) {
-                    prev.style.color       = '#c4704a';
-                    prev.style.borderColor = '#c4704a';
-                    prev.textContent       = introFull;
+                    prev.style.color = '#c4704a'; prev.style.borderColor = '#c4704a';
+                    prev.textContent = introFull;
                 } else if (intrTpl) {
-                    prev.style.color       = '#c4704a';
-                    prev.style.borderColor = '#c4704a';
-                    prev.textContent       = intrTpl.replace(/\{noun\}/g, nounFull || '[Produktname]');
+                    prev.style.color = '#c4704a'; prev.style.borderColor = '#c4704a';
+                    prev.textContent = intrTpl.replace(/\{noun\}/g, nounFull || '[Produktname]');
                 } else {
-                    prev.style.color       = '#bbb';
-                    prev.style.borderColor = '#ddd';
-                    prev.textContent       = '(kein Template — Etsy-Text beginnt direkt ohne Einleitung)';
+                    prev.style.color = '#bbb'; prev.style.borderColor = '#ddd';
+                    prev.textContent = '(kein Template — Etsy-Text beginnt direkt ohne Einleitung)';
                 }
             }
 
-            // Also update SERP preview inside the active card
             var serpT = card.querySelector('.serp-title');
             var serpD = card.querySelector('.serp-desc');
             if (serpT) serpT.textContent = (nounFull || exNoun) + ' – ' + cat + ' | ' + site;
             if (serpD) serpD.textContent = (nounFull || exNoun) + (dsfx ? ' – ' + dsfx.substring(0, 80) : '') + '.';
+        }
+
+        // Returns the first non-blocked, non-auto-filtered button by data-order (= Etsy relevance order)
+        function computeTagWinner(card) {
+            var btns = Array.from(card.querySelectorAll('.an-tag-toggle:not(.an-auto-filtered)'));
+            btns.sort(function(a, b) { return parseInt(a.dataset.order, 10) - parseInt(b.dataset.order, 10); });
+            for (var i = 0; i < btns.length; i++) {
+                if (!btns[i].classList.contains('an-blocked') && btns[i].dataset.tag.length >= 3) {
+                    return btns[i];
+                }
+            }
+            return null;
+        }
+
+        // Re-styles all non-auto tags in a card and marks the new winner
+        function applyWinner(card) {
+            card.querySelectorAll('.an-tag-toggle:not(.an-auto-filtered)').forEach(function(b) {
+                var wasWinner = b.classList.contains('an-winner');
+                b.classList.remove('an-winner');
+                if (wasWinner && b.textContent.endsWith(' ✓')) {
+                    b.textContent = b.textContent.slice(0, -2);
+                }
+                if (!b.classList.contains('an-blocked')) {
+                    b.style.background     = '#f0fdf4';
+                    b.style.color          = '#16a34a';
+                    b.style.borderColor    = '#86efac';
+                    b.style.fontWeight     = '';
+                    b.style.textDecoration = '';
+                }
+            });
+            var winnerBtn = computeTagWinner(card);
+            if (winnerBtn) {
+                winnerBtn.classList.add('an-winner');
+                winnerBtn.style.background  = '#fffbeb';
+                winnerBtn.style.color       = '#92400e';
+                winnerBtn.style.borderColor = '#fbbf24';
+                winnerBtn.style.fontWeight  = '700';
+                if (!winnerBtn.textContent.endsWith(' ✓')) {
+                    winnerBtn.textContent = winnerBtn.textContent + ' ✓';
+                }
+                card.dataset.exNoun = winnerBtn.dataset.display || winnerBtn.dataset.tag;
+            } else {
+                card.dataset.exNoun = card.dataset.cat || '';
+            }
         }
 
         document.querySelectorAll('.seo-cat-card').forEach(function(card) {
@@ -668,26 +770,30 @@ function annyhase_seo_hub_tab_categories(): void {
             });
         });
 
-        // Activate first card on load
+        // On load: apply winner styling to all cards, then activate the first
+        document.querySelectorAll('.seo-cat-card').forEach(function(card) { applyWinner(card); });
         var first = document.querySelector('.seo-cat-card');
         if (first) activateCard(first);
 
-        // Tag blacklist toggle
-        document.querySelectorAll('.an-tag-toggle').forEach(function(btn) {
+        // Tag blacklist toggle (only non-auto-filtered tags are clickable)
+        document.querySelectorAll('.an-tag-toggle:not(.an-auto-filtered)').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 var isBlocked = btn.classList.toggle('an-blocked');
                 btn.style.background     = isBlocked ? '#fef2f2' : '#f0fdf4';
                 btn.style.color          = isBlocked ? '#dc2626' : '#16a34a';
                 btn.style.borderColor    = isBlocked ? '#fca5a5' : '#86efac';
                 btn.style.textDecoration = isBlocked ? 'line-through' : '';
+                btn.style.fontWeight     = '';
                 var card = btn.closest('.seo-cat-card');
-                var inp  = card ? card.querySelector('.an-blacklist-input') : null;
-                if (!inp) return;
-                var bl = [];
-                card.querySelectorAll('.an-tag-toggle.an-blocked').forEach(function(b) {
-                    bl.push(b.dataset.tag);
-                });
-                inp.value = bl.join(', ');
+                if (!card) return;
+                var inp = card.querySelector('.an-blacklist-input');
+                if (inp) {
+                    var bl = [];
+                    card.querySelectorAll('.an-tag-toggle.an-blocked').forEach(function(b) { bl.push(b.dataset.tag); });
+                    inp.value = bl.join(', ');
+                }
+                applyWinner(card);
+                activateCard(card);
             });
         });
     })();
