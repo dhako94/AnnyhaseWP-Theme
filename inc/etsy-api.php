@@ -961,6 +961,9 @@ function etsy_sync_get_api_key(): string {
  * Creates or retrieves a 'produktkategorie' term matching a given Etsy shop
  * section and assigns it to the product post.
  *
+ * Safe to call repeatedly: never deletes or modifies existing terms or their
+ * meta (SEO keywords, descriptions) — only adds/updates the term-post relation.
+ *
  * @param int   $post_id    WP post ID of the product
  * @param int   $section_id Etsy shop_section_id from the listing data
  * @param array $sections   Map of section_id => section title
@@ -970,11 +973,21 @@ function etsy_sync_set_product_term(int $post_id, int $section_id, array $sectio
 
     $term_name = $sections[$section_id];
     $term      = term_exists($term_name, 'produktkategorie');
+
     if (!$term) {
-        $term = wp_insert_term($term_name, 'produktkategorie');
+        $inserted = wp_insert_term($term_name, 'produktkategorie');
+        // wp_insert_term can fail with 'term_exists' when term_exists() returned
+        // not-found due to a cache miss or race condition. Re-lookup in that case
+        // so the term-post relationship is always set correctly.
+        $term = is_wp_error($inserted) ? term_exists($term_name, 'produktkategorie') : $inserted;
     }
-    if ($term && !is_wp_error($term)) {
-        wp_set_post_terms($post_id, [(int) ($term['term_id'] ?? 0)], 'produktkategorie');
+
+    if (!$term || is_wp_error($term)) return;
+
+    // term_exists() may return an array (term_id, term_taxonomy_id) or an int.
+    $term_id = (int) (is_array($term) ? ($term['term_id'] ?? 0) : $term);
+    if ($term_id) {
+        wp_set_post_terms($post_id, [$term_id], 'produktkategorie');
     }
 }
 
@@ -1246,19 +1259,24 @@ add_action('wp_ajax_etsy_sync_products_batch', function (): void {
     }
 
     if ($offset === 0) {
-        /* Reset the active-IDs accumulator at the start of each sync run */
+        /* Reset accumulators at the start of each sync run */
         delete_transient('etsy_sync_active_ids');
+        // Discard stale sections so this run always starts with fresh data.
+        delete_transient('etsy_shop_sections');
+    }
 
-        /* Fetch shop sections on the first batch and cache for the full run */
+    /* Fetch sections whenever the cache is absent — on the first batch and on
+     * any later batch where the previous fetch failed or the transient expired. */
+    if (get_transient('etsy_shop_sections') === false) {
         $sec_res = etsy_sync_request(
             'https://openapi.etsy.com/v3/application/shops/' . $shop_id . '/sections', $api_key
         );
         if (!is_wp_error($sec_res) && (int) wp_remote_retrieve_response_code($sec_res) === 200) {
-            $sections = [];
+            $sec_map = [];
             foreach (json_decode(wp_remote_retrieve_body($sec_res), true)['results'] ?? [] as $s) {
-                $sections[(int) ($s['shop_section_id'] ?? 0)] = sanitize_text_field($s['title'] ?? '');
+                $sec_map[(int) ($s['shop_section_id'] ?? 0)] = sanitize_text_field($s['title'] ?? '');
             }
-            set_transient('etsy_shop_sections', $sections, HOUR_IN_SECONDS);
+            set_transient('etsy_shop_sections', $sec_map, HOUR_IN_SECONDS);
         }
     }
 
